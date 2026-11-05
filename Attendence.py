@@ -52,18 +52,23 @@ st.set_page_config(
 # Initialize database on startup
 init_db()
 
-# Custom Styling & Header Design
+# Custom Styling & Header Design (Centered Content)
 st.markdown("""
     <style>
     .main {
         background-color: #MintCream;
     }
     .monogram-box {
-        background-color: #LightSteelBlue;
-        padding: 15px;
+        background-color: #f0f4f8;
+        padding: 30px;
         border-radius: 10px;
         text-align: center;
         border: 2px solid #b0c4de;
+        margin-top: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -106,13 +111,15 @@ if not st.session_state.logged_in:
                     st.error("Incorrect Teacher username or password!")
     with col_l2:
         st.markdown("""
-            <div style="background-color: #f0f4f8; padding: 25px; border-radius: 10px; border: 2px solid #b0c4de; margin-top: 30px;">
-                <h3 style="color: #1e3a8a; margin-top: 0;">AIMS</h3>
-                <p style="color: #7f1d1d; font-weight: bold; font-size: 12px;">AIMS SCIENCE ACADEMY</p>
-                <hr>
-                <p style="font-size: 14px;"><b>Instructions:</b><br>
-                - Admin (You) are authorized to add and manage student records.<br>
-                - Class Teachers can mark attendance and enter test scores.</p>
+            <div class="monogram-box">
+                <h3 style="color: #1e3a8a; margin: 0; font-size: 28px;">AIMS</h3>
+                <p style="color: #7f1d1d; font-weight: bold; font-size: 11px; margin: 5px 0 15px 0; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
+                <hr style="width: 80%; border: 0; border-top: 1px solid #b0c4de; margin: 5px 0 15px 0;">
+                <p style="font-size: 13px; color: #333333; margin: 0; line-height: 1.5;">
+                    <b>Instructions:</b><br>
+                    - Admin (You) are authorized to add and manage student records.<br>
+                    - Class Teachers can mark attendance and enter test scores.
+                </p>
             </div>
         """, unsafe_allow_html=True)
     st.stop()
@@ -137,7 +144,6 @@ if st.session_state.role == "admin":
         "📈 Test Reports"
     ])
 else:
-    # Teacher view: No access to 'Manage Students' tab
     tab2, tab3, tab4 = st.tabs([
         "📝 Mark Attendance", 
         "📊 Attendance Reports", 
@@ -182,7 +188,7 @@ if tab1 is not None:
 
         with col_logo:
             st.markdown("""
-                <div style="background-color: #f0f4f8; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #b0c4de; margin-top: 25px;">
+                <div class="monogram-box">
                     <h3 style="color: #1e3a8a; margin: 0; font-size: 28px; font-weight: bold;">AIMS</h3>
                     <p style="color: #7f1d1d; margin: 5px 0 0 0; font-size: 11px; font-weight: bold; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
                 </div>
