@@ -94,7 +94,7 @@ if not st.session_state.logged_in:
         
         if st.button("Login"):
             if login_role == "Admin / Programmer":
-                if username_input == "admin" and password_input == "admin123":
+                if username_input == "admin" and password_input == "ChoudharyAli4321":
                     st.session_state.logged_in = True
                     st.session_state.role = "admin"
                     st.success("Admin login successful!")
@@ -102,7 +102,7 @@ if not st.session_state.logged_in:
                 else:
                     st.error("Incorrect Admin username or password!")
             else:
-                if username_input == "teacher" and password_input == "teacher123":
+                if username_input == "teacher" and password_input == "abcd4321":
                     st.session_state.logged_in = True
                     st.session_state.role = "teacher"
                     st.success("Class Teacher login successful!")
