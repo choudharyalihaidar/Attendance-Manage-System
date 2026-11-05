@@ -81,38 +81,38 @@ if not st.session_state.logged_in:
     
     col_l1, col_l2 = st.columns([1, 1])
     with col_l1:
-        st.markdown("### لاگ ان کریں (Please Login)")
-        login_role = st.selectbox("اکاؤنٹ کی قسم منتخب کریں", ["کلاس ٹیچر (Class Teacher)", "ایڈمن / پروگرامر (Admin / Programmer)"])
+        st.markdown("### Please Login")
+        login_role = st.selectbox("Select Account Type", ["Class Teacher", "Admin / Programmer"])
         
-        username_input = st.text_input("یوزر نیم (Username)")
-        password_input = st.text_input("پاسورڈ (Password)", type="password")
+        username_input = st.text_input("Username")
+        password_input = st.text_input("Password", type="password")
         
-        if st.button("لاگ ان کریں"):
-            if login_role == "ایڈمن / پروگرامر (Admin / Programmer)":
+        if st.button("Login"):
+            if login_role == "Admin / Programmer":
                 if username_input == "admin" and password_input == "admin123":
                     st.session_state.logged_in = True
                     st.session_state.role = "admin"
-                    st.success("ایڈمن لاگ ان کامیاب!")
+                    st.success("Admin login successful!")
                     st.rerun()
                 else:
-                    st.error("غلط ایڈمن یوزر نیم یا پاسورڈ!")
+                    st.error("Incorrect Admin username or password!")
             else:
                 if username_input == "teacher" and password_input == "teacher123":
                     st.session_state.logged_in = True
                     st.session_state.role = "teacher"
-                    st.success("کلاس ٹیچر لاگ ان کامیاب!")
+                    st.success("Class Teacher login successful!")
                     st.rerun()
                 else:
-                    st.error("غلط ٹیچر یوزر نیم یا پاسورڈ!")
+                    st.error("Incorrect Teacher username or password!")
     with col_l2:
         st.markdown("""
             <div style="background-color: #f0f4f8; padding: 25px; border-radius: 10px; border: 2px solid #b0c4de; margin-top: 30px;">
                 <h3 style="color: #1e3a8a; margin-top: 0;">AIMS</h3>
                 <p style="color: #7f1d1d; font-weight: bold; font-size: 12px;">AIMS SCIENCE ACADEMY</p>
                 <hr>
-                <p style="font-size: 14px;"><b>ہدایات:</b><br>
-                - ایڈمن (آپ) اسٹوڈنٹس کا ڈیٹا درج کرنے اور مینج کرنے کے مجاز ہیں۔<br>
-                - کلاس ٹیچر صرف حاضری (Attendance) اور ٹیسٹ مارکس درج کر سکتے ہیں۔</p>
+                <p style="font-size: 14px;"><b>Instructions:</b><br>
+                - Admin (You) are authorized to add and manage student records.<br>
+                - Class Teachers can mark attendance and enter test scores.</p>
             </div>
         """, unsafe_allow_html=True)
     st.stop()
@@ -120,8 +120,8 @@ if not st.session_state.logged_in:
 # ==========================================
 # MAIN APPLICATION (AFTER LOGIN)
 # ==========================================
-st.sidebar.markdown(f"👤 لاگ ان بطور: **{st.session_state.role.upper()}**")
-if st.sidebar.button("لاگ آؤٹ (Logout)"):
+st.sidebar.markdown(f"👤 Logged in as: **{st.session_state.role.upper()}**")
+if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.session_state.role = None
     st.rerun()
