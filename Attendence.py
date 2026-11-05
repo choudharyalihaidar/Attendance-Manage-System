@@ -26,12 +26,26 @@ def init_db():
             FOREIGN KEY (roll_no) REFERENCES students (roll_no)
         )
     """)
+    # New table for storing test scores
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS test_marks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            roll_no TEXT,
+            class_name TEXT,
+            subject TEXT,
+            test_name TEXT,
+            obtained_marks REAL,
+            total_marks REAL,
+            date TEXT,
+            FOREIGN KEY (roll_no) REFERENCES students (roll_no)
+        )
+    """)
     conn.commit()
     conn.close()
 
 # Page Configuration
 st.set_page_config(
-    page_title="AIMS Science Academy - Attendance System",
+    page_title="AIMS Science Academy - Attendance & Test System",
     page_icon="🎓",
     layout="wide"
 )
@@ -55,10 +69,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# App Title & Navigation Tabs
-st.title("🎓 AIMS Science Academy - Attendance System")
+# App Title & Navigation Tabs (Added 4th Tab)
+st.title("🎓 AIMS Science Academy - Management System")
 
-tab1, tab2, tab3 = st.tabs(["👥 Manage Students", "📝 Mark Attendance", "📊 View Reports"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "👥 Manage Students", 
+    "📝 Mark Attendance", 
+    "📊 Attendance Reports", 
+    "📈 Test Reports"
+])
 
 # ==========================================
 # TAB 1: MANAGE STUDENTS
@@ -96,16 +115,15 @@ with tab1:
 
     with col_logo:
         st.markdown("""
-            <div class="monogram-box">
-                <h3 style="color: #1e3a8a; margin: 0; font-size: 24px;">AIMS</h3>
-                <p style="color: #7f1d1d; margin: 0; font-size: 11px; font-weight: bold;">AIMS SCIENCE ACADEMY</p>
+            <div style="background-color: #f0f4f8; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #b0c4de; margin-top: 25px;">
+                <h3 style="color: #1e3a8a; margin: 0; font-size: 28px; font-weight: bold;">AIMS</h3>
+                <p style="color: #7f1d1d; margin: 5px 0 0 0; font-size: 11px; font-weight: bold; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
             </div>
         """, unsafe_allow_html=True)
 
     st.divider()
     st.subheader("Enrolled Students")
     
-    # Fetch students for table and deletion options
     conn = sqlite3.connect("academy_attendance.db")
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, roll_no, class_name, subjects FROM students")
@@ -113,11 +131,9 @@ with tab1:
     conn.close()
 
     if students_data:
-        # Display as a clean table
         table_data = [{"ID": r[0], "Name": r[1], "Roll No": r[2], "Class": r[3], "Subjects": r[4]} for r in students_data]
         st.dataframe(table_data, use_container_width=True)
 
-        # Management buttons
         col_del1, col_del2 = st.columns(2)
         with col_del1:
             roll_to_delete = st.selectbox("Select Roll No to Delete", options=[r[2] for r in students_data], key="delete_select")
@@ -125,6 +141,7 @@ with tab1:
                 conn = sqlite3.connect("academy_attendance.db")
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM attendance WHERE roll_no = ?", (roll_to_delete,))
+                cursor.execute("DELETE FROM test_marks WHERE roll_no = ?", (roll_to_delete,))
                 cursor.execute("DELETE FROM students WHERE roll_no = ?", (roll_to_delete,))
                 conn.commit()
                 conn.close()
@@ -138,6 +155,7 @@ with tab1:
                 conn = sqlite3.connect("academy_attendance.db")
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM attendance")
+                cursor.execute("DELETE FROM test_marks")
                 cursor.execute("DELETE FROM students")
                 cursor.execute("DELETE FROM sqlite_sequence WHERE name='students'")
                 conn.commit()
@@ -166,9 +184,8 @@ with tab2:
     else:
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            selected_class = st.selectbox("Select Class", options=classes)
+            selected_class = st.selectbox("Select Class", options=classes, key="att_class")
 
-        # Get subjects for selected class
         conn = sqlite3.connect("academy_attendance.db")
         cursor = conn.cursor()
         cursor.execute("SELECT subjects FROM students WHERE class_name = ?", (selected_class,))
@@ -186,7 +203,7 @@ with tab2:
 
         with col_c2:
             if subject_list:
-                selected_subject = st.selectbox("Select Subject", options=subject_list)
+                selected_subject = st.selectbox("Select Subject", options=subject_list, key="att_sub")
             else:
                 selected_subject = None
                 st.warning("No subjects found for this class.")
@@ -211,7 +228,6 @@ with tab2:
                 
                 with st.form("attendance_form"):
                     for roll_no, name in enrolled_students:
-                        # Fetch existing attendance status if saved previously today
                         cursor.execute(
                             "SELECT status FROM attendance WHERE roll_no = ? AND class_name = ? AND subject = ? AND date = ?",
                             (roll_no, selected_class, selected_subject, today_str)
@@ -257,12 +273,12 @@ with tab2:
             conn.close()
 
 # ==========================================
-# TAB 3: VIEW REPORTS
+# TAB 3: ATTENDANCE REPORTS
 # ==========================================
 with tab3:
     st.subheader("Attendance Reports")
     
-    filter_roll = st.text_input("Filter by Roll Number (Leave blank for all records):").strip()
+    filter_roll = st.text_input("Filter by Roll Number (Leave blank for all records):", key="att_filter").strip()
 
     conn = sqlite3.connect("academy_attendance.db")
     cursor = conn.cursor()
@@ -299,3 +315,165 @@ with tab3:
         st.dataframe(report_table, use_container_width=True)
     else:
         st.info("No attendance records found.")
+
+# ==========================================
+# TAB 4: TEST REPORTS (NEW SECTION)
+# ==========================================
+with tab4:
+    st.subheader("Student Test Marks & Reports")
+
+    test_action = st.radio("Choose Action", options=["Enter / Update Test Marks", "View Test Records"], horizontal=True)
+
+    conn = sqlite3.connect("academy_attendance.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT class_name FROM students")
+    classes = [row[0] for row in cursor.fetchall() if row[0]]
+    conn.close()
+
+    if test_action == "Enter / Update Test Marks":
+        st.markdown("### Enter Test Scores")
+        if not classes:
+            st.warning("No classes found. Please add students first.")
+        else:
+            col_t1, col_t2, col_t3 = st.columns(3)
+            with col_t1:
+                test_class = st.selectbox("Test Class", options=classes, key="test_class")
+            
+            # Fetch subjects for selected class
+            conn = sqlite3.connect("academy_attendance.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT subjects FROM students WHERE class_name = ?", (test_class,))
+            rows = cursor.fetchall()
+            conn.close()
+
+            t_subjects = set()
+            for row in rows:
+                for sub in row[0].split(","):
+                    clean_sub = sub.strip()
+                    if clean_sub:
+                        t_subjects.add(clean_sub)
+            test_subject_list = sorted(list(t_subjects))
+
+            with col_t2:
+                if test_subject_list:
+                    test_subject = st.selectbox("Test Subject", options=test_subject_list, key="test_sub")
+                else:
+                    test_subject = None
+                    st.warning("No subjects available.")
+
+            with col_t3:
+                test_name = st.text_input("Test Title / Name", value="Weekly Test 1")
+
+            col_t4, col_t5 = st.columns(2)
+            with col_t4:
+                total_marks = st.number_input("Total Marks", min_value=1.0, value=50.0, step=1.0)
+            with col_t5:
+                test_date = st.date_input("Test Date", value=date.today())
+
+            if test_class and test_subject:
+                conn = sqlite3.connect("academy_attendance.db")
+                cursor = conn.cursor()
+                cursor.execute("SELECT roll_no, name, subjects FROM students WHERE class_name = ?", (test_class,))
+                students = cursor.fetchall()
+
+                enrolled_students = []
+                for roll_no, name, subjects in students:
+                    if test_subject in [s.strip() for s in subjects.split(",")]:
+                        enrolled_students.append((roll_no, name))
+
+                if not enrolled_students:
+                    st.info(f"No students in class '{test_class}' enrolled in '{test_subject}'.")
+                else:
+                    st.write(f"Entering marks for **{test_class}** - **{test_subject}** ({test_name})")
+                    
+                    test_scores = {}
+                    with st.form("test_marks_form"):
+                        for roll_no, name in enrolled_students:
+                            # Check if marks already exist for this test
+                            cursor.execute(
+                                "SELECT obtained_marks FROM test_marks WHERE roll_no = ? AND class_name = ? AND subject = ? AND test_name = ? AND date = ?",
+                                (roll_no, test_class, test_subject, test_name, str(test_date))
+                            )
+                            existing_score = cursor.fetchone()
+                            default_score = existing_score[0] if existing_score else 0.0
+
+                            col_s1, col_s2 = st.columns([2, 2])
+                            with col_s1:
+                                st.write(f"**{name}** `({roll_no})`")
+                            with col_s2:
+                                score = st.number_input(
+                                    f"Marks for {roll_no}",
+                                    min_value=0.0,
+                                    max_value=float(total_marks),
+                                    value=float(default_score),
+                                    step=0.5,
+                                    key=f"score_{roll_no}",
+                                    label_visibility="collapsed"
+                                )
+                                test_scores[roll_no] = score
+
+                        submit_marks = st.form_submit_button("Save Test Marks")
+                        if submit_marks:
+                            for roll_no, obtained in test_scores.items():
+                                cursor.execute(
+                                    "SELECT * FROM test_marks WHERE roll_no = ? AND class_name = ? AND subject = ? AND test_name = ? AND date = ?",
+                                    (roll_no, test_class, test_subject, test_name, str(test_date))
+                                    )
+                                record = cursor.fetchone()
+
+                                if record:
+                                    cursor.execute(
+                                        "UPDATE test_marks SET obtained_marks = ?, total_marks = ? WHERE roll_no = ? AND class_name = ? AND subject = ? AND test_name = ? AND date = ?",
+                                        (obtained, total_marks, roll_no, test_class, test_subject, test_name, str(test_date))
+                                    )
+                                else:
+                                    cursor.execute(
+                                        "INSERT INTO test_marks (roll_no, class_name, subject, test_name, obtained_marks, total_marks, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                        (roll_no, test_class, test_subject, test_name, obtained, total_marks, str(test_date))
+                                    )
+                            conn.commit()
+                            st.success("Test marks saved successfully!")
+                conn.close()
+
+    else:
+        st.markdown("### View Test Records & Reports")
+        filter_test_roll = st.text_input("Filter by Roll Number (Leave blank for all records):", key="test_filter").strip()
+
+        conn = sqlite3.connect("academy_attendance.db")
+        cursor = conn.cursor()
+
+        if filter_test_roll:
+            cursor.execute("""
+                SELECT students.name, students.roll_no, test_marks.class_name, test_marks.subject, test_marks.test_name, test_marks.obtained_marks, test_marks.total_marks, test_marks.date 
+                FROM test_marks 
+                JOIN students ON students.roll_no = test_marks.roll_no 
+                WHERE test_marks.roll_no = ?
+            """, (filter_test_roll,))
+        else:
+            cursor.execute("""
+                SELECT students.name, students.roll_no, test_marks.class_name, test_marks.subject, test_marks.test_name, test_marks.obtained_marks, test_marks.total_marks, test_marks.date 
+                FROM test_marks 
+                JOIN students ON students.roll_no = test_marks.roll_no
+            """)
+
+        test_records = cursor.fetchall()
+        conn.close()
+
+        if test_records:
+            test_report_table = [
+                {
+                    "Student Name": r[0],
+                    "Roll Number": r[1],
+                    "Class": r[2],
+                    "Subject": r[3],
+                    "Test Title": r[4],
+                    "Obtained Marks": r[5],
+                    "Total Marks": r[6],
+                    "Percentage": f"{(r[5]/r[6])*100:.1f}%" if r[6] > 0 else "0.0%",
+                    "Date": r[7]
+                }
+                for r in test_records
+            ]
+            st.dataframe(test_report_table, use_container_width=True)
+        else:
+            st.info("No test records found.")
