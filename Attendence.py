@@ -117,7 +117,7 @@ if not st.session_state.logged_in:
                 <hr style="width: 80%; border: 0; border-top: 1px solid #b0c4de; margin: 5px 0 15px 0;">
                 <p style="font-size: 13px; color: #333333; margin: 0; line-height: 1.5;">
                     <b>Instructions:</b><br>
-                    - Admin (You) are authorized to add and manage student records.<br>
+                    - Admin (You) are authorized to add, edit, and manage student records.<br>
                     - Class Teachers can mark attendance and enter test scores.
                 </p>
             </div>
@@ -207,6 +207,42 @@ if tab1 is not None:
             table_data = [{"ID": r[0], "Name": r[1], "Roll No": r[2], "Class": r[3], "Subjects": r[4]} for r in students_data]
             st.dataframe(table_data, use_container_width=True)
 
+            # --- EDIT STUDENT SECTION ---
+            st.divider()
+            st.subheader("✏️ Edit Student Details")
+            edit_roll_no = st.selectbox("Select Roll No to Edit", options=[r[2] for r in students_data], key="edit_select_box")
+            
+            # Fetch current details of selected student
+            conn = sqlite3.connect("academy_attendance.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, class_name, subjects FROM students WHERE roll_no = ?", (edit_roll_no,))
+            curr_student = cursor.fetchone()
+            conn.close()
+
+            if curr_student:
+                curr_name, curr_class, curr_subjects = curr_student
+                with st.form("edit_student_form"):
+                    new_name = st.text_input("Update Student Name", value=curr_name)
+                    new_class = st.text_input("Update Class Name", value=curr_class)
+                    new_subjects = st.text_input("Update Subjects (comma separated)", value=curr_subjects)
+                    
+                    update_btn = st.form_submit_button("Save Changes")
+                    if update_btn:
+                        if not new_name.strip() or not new_class.strip() or not new_subjects.strip():
+                            st.error("Please fill in all fields.")
+                        else:
+                            conn = sqlite3.connect("academy_attendance.db")
+                            cursor = conn.cursor()
+                            cursor.execute(
+                                "UPDATE students SET name = ?, class_name = ?, subjects = ? WHERE roll_no = ?",
+                                (new_name.strip(), new_class.strip(), new_subjects.strip(), edit_roll_no)
+                            )
+                            conn.commit()
+                            conn.close()
+                            st.success(f"Student with Roll No {edit_roll_no} updated successfully!")
+                            st.rerun()
+
+            st.divider()
             col_del1, col_del2 = st.columns(2)
             with col_del1:
                 roll_to_delete = st.selectbox("Select Roll No to Delete", options=[r[2] for r in students_data], key="delete_select")
