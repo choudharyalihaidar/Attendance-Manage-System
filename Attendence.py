@@ -26,7 +26,6 @@ def init_db():
             FOREIGN KEY (roll_no) REFERENCES students (roll_no)
         )
     """)
-    # New table for storing test scores
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS test_marks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,101 +68,169 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# App Title & Navigation Tabs (Added 4th Tab)
-st.title("🎓 AIMS Science Academy - Management System")
-
-tab1, tab2, tab3, tab4 = st.tabs([
-    "👥 Manage Students", 
-    "📝 Mark Attendance", 
-    "📊 Attendance Reports", 
-    "📈 Test Reports"
-])
+# Session State Initialization for Login
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.role = None
 
 # ==========================================
-# TAB 1: MANAGE STUDENTS
+# LOGIN SCREEN
 # ==========================================
-with tab1:
-    col_form, col_logo = st.columns([2, 1])
-
-    with col_form:
-        st.subheader("Student Details Form")
-        with st.form("student_form", clear_on_submit=True):
-            name = st.text_input("Student Name")
-            roll_no = st.text_input("Roll Number / ID")
-            class_name = st.text_input("Class Name")
-            subjects = st.text_input("Subjects (comma separated, e.g. Math, Physics, Chemistry)")
-            
-            submit_student = st.form_submit_button("Add Student")
-            
-            if submit_student:
-                if not name.strip() or not roll_no.strip() or not class_name.strip() or not subjects.strip():
-                    st.error("Please fill in all fields.")
+if not st.session_state.logged_in:
+    st.title("🎓 AIMS Science Academy - Login Portal")
+    
+    col_l1, col_l2 = st.columns([1, 1])
+    with col_l1:
+        st.markdown("### لاگ ان کریں (Please Login)")
+        login_role = st.selectbox("اکاؤنٹ کی قسم منتخب کریں", ["کلاس ٹیچر (Class Teacher)", "ایڈمن / پروگرامر (Admin / Programmer)"])
+        
+        username_input = st.text_input("یوزر نیم (Username)")
+        password_input = st.text_input("پاسورڈ (Password)", type="password")
+        
+        if st.button("لاگ ان کریں"):
+            if login_role == "ایڈمن / پروگرامر (Admin / Programmer)":
+                if username_input == "admin" and password_input == "admin123":
+                    st.session_state.logged_in = True
+                    st.session_state.role = "admin"
+                    st.success("ایڈمن لاگ ان کامیاب!")
+                    st.rerun()
                 else:
-                    try:
-                        conn = sqlite3.connect("academy_attendance.db")
-                        cursor = conn.cursor()
-                        cursor.execute(
-                            "INSERT INTO students (name, roll_no, class_name, subjects) VALUES (?, ?, ?, ?)",
-                            (name.strip(), roll_no.strip(), class_name.strip(), subjects.strip())
-                        )
-                        conn.commit()
-                        conn.close()
-                        st.success(f"Student {name} added successfully!")
-                        st.rerun()
-                    except sqlite3.IntegrityError:
-                        st.error("Roll number already exists.")
-
-    with col_logo:
+                    st.error("غلط ایڈمن یوزر نیم یا پاسورڈ!")
+            else:
+                if username_input == "teacher" and password_input == "teacher123":
+                    st.session_state.logged_in = True
+                    st.session_state.role = "teacher"
+                    st.success("کلاس ٹیچر لاگ ان کامیاب!")
+                    st.rerun()
+                else:
+                    st.error("غلط ٹیچر یوزر نیم یا پاسورڈ!")
+    with col_l2:
         st.markdown("""
-            <div style="background-color: #f0f4f8; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #b0c4de; margin-top: 25px;">
-                <h3 style="color: #1e3a8a; margin: 0; font-size: 28px; font-weight: bold;">AIMS</h3>
-                <p style="color: #7f1d1d; margin: 5px 0 0 0; font-size: 11px; font-weight: bold; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
+            <div style="background-color: #f0f4f8; padding: 25px; border-radius: 10px; border: 2px solid #b0c4de; margin-top: 30px;">
+                <h3 style="color: #1e3a8a; margin-top: 0;">AIMS</h3>
+                <p style="color: #7f1d1d; font-weight: bold; font-size: 12px;">AIMS SCIENCE ACADEMY</p>
+                <hr>
+                <p style="font-size: 14px;"><b>ہدایات:</b><br>
+                - ایڈمن (آپ) اسٹوڈنٹس کا ڈیٹا درج کرنے اور مینج کرنے کے مجاز ہیں۔<br>
+                - کلاس ٹیچر صرف حاضری (Attendance) اور ٹیسٹ مارکس درج کر سکتے ہیں۔</p>
             </div>
         """, unsafe_allow_html=True)
+    st.stop()
 
-    st.divider()
-    st.subheader("Enrolled Students")
-    
-    conn = sqlite3.connect("academy_attendance.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, roll_no, class_name, subjects FROM students")
-    students_data = cursor.fetchall()
-    conn.close()
+# ==========================================
+# MAIN APPLICATION (AFTER LOGIN)
+# ==========================================
+st.sidebar.markdown(f"👤 لاگ ان بطور: **{st.session_state.role.upper()}**")
+if st.sidebar.button("لاگ آؤٹ (Logout)"):
+    st.session_state.logged_in = False
+    st.session_state.role = None
+    st.rerun()
 
-    if students_data:
-        table_data = [{"ID": r[0], "Name": r[1], "Roll No": r[2], "Class": r[3], "Subjects": r[4]} for r in students_data]
-        st.dataframe(table_data, use_container_width=True)
+st.title("🎓 AIMS Science Academy - Management System")
 
-        col_del1, col_del2 = st.columns(2)
-        with col_del1:
-            roll_to_delete = st.selectbox("Select Roll No to Delete", options=[r[2] for r in students_data], key="delete_select")
-            if st.button("Delete Selected Student"):
-                conn = sqlite3.connect("academy_attendance.db")
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM attendance WHERE roll_no = ?", (roll_to_delete,))
-                cursor.execute("DELETE FROM test_marks WHERE roll_no = ?", (roll_to_delete,))
-                cursor.execute("DELETE FROM students WHERE roll_no = ?", (roll_to_delete,))
-                conn.commit()
-                conn.close()
-                st.success(f"Student with Roll No {roll_to_delete} deleted successfully.")
-                st.rerun()
+# Role-based Navigation Tabs
+if st.session_state.role == "admin":
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "👥 Manage Students", 
+        "📝 Mark Attendance", 
+        "📊 Attendance Reports", 
+        "📈 Test Reports"
+    ])
+else:
+    # Teacher view: No access to 'Manage Students' tab
+    tab2, tab3, tab4 = st.tabs([
+        "📝 Mark Attendance", 
+        "📊 Attendance Reports", 
+        "📈 Test Reports"
+    ])
+    tab1 = None
 
-        with col_del2:
-            st.write("")
-            st.write("")
-            if st.button("Clear All Students & Reset Database", type="primary"):
-                conn = sqlite3.connect("academy_attendance.db")
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM attendance")
-                cursor.execute("DELETE FROM test_marks")
-                cursor.execute("DELETE FROM students")
-                cursor.execute("DELETE FROM sqlite_sequence WHERE name='students'")
-                conn.commit()
-                conn.close()
-                st.success("All student records cleared successfully.")
-                st.rerun()
-    else:
-        st.info("No students enrolled yet.")
+# ==========================================
+# TAB 1: MANAGE STUDENTS (ADMIN ONLY)
+# ==========================================
+if tab1 is not None:
+    with tab1:
+        col_form, col_logo = st.columns([2, 1])
+
+        with col_form:
+            st.subheader("Student Details Form")
+            with st.form("student_form", clear_on_submit=True):
+                name = st.text_input("Student Name")
+                roll_no = st.text_input("Roll Number / ID")
+                class_name = st.text_input("Class Name")
+                subjects = st.text_input("Subjects (comma separated, e.g. Math, Physics, Chemistry)")
+                
+                submit_student = st.form_submit_button("Add Student")
+                
+                if submit_student:
+                    if not name.strip() or not roll_no.strip() or not class_name.strip() or not subjects.strip():
+                        st.error("Please fill in all fields.")
+                    else:
+                        try:
+                            conn = sqlite3.connect("academy_attendance.db")
+                            cursor = conn.cursor()
+                            cursor.execute(
+                                "INSERT INTO students (name, roll_no, class_name, subjects) VALUES (?, ?, ?, ?)",
+                                (name.strip(), roll_no.strip(), class_name.strip(), subjects.strip())
+                            )
+                            conn.commit()
+                            conn.close()
+                            st.success(f"Student {name} added successfully!")
+                            st.rerun()
+                        except sqlite3.IntegrityError:
+                            st.error("Roll number already exists.")
+
+        with col_logo:
+            st.markdown("""
+                <div style="background-color: #f0f4f8; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #b0c4de; margin-top: 25px;">
+                    <h3 style="color: #1e3a8a; margin: 0; font-size: 28px; font-weight: bold;">AIMS</h3>
+                    <p style="color: #7f1d1d; margin: 5px 0 0 0; font-size: 11px; font-weight: bold; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+        st.divider()
+        st.subheader("Enrolled Students")
+        
+        conn = sqlite3.connect("academy_attendance.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, roll_no, class_name, subjects FROM students")
+        students_data = cursor.fetchall()
+        conn.close()
+
+        if students_data:
+            table_data = [{"ID": r[0], "Name": r[1], "Roll No": r[2], "Class": r[3], "Subjects": r[4]} for r in students_data]
+            st.dataframe(table_data, use_container_width=True)
+
+            col_del1, col_del2 = st.columns(2)
+            with col_del1:
+                roll_to_delete = st.selectbox("Select Roll No to Delete", options=[r[2] for r in students_data], key="delete_select")
+                if st.button("Delete Selected Student"):
+                    conn = sqlite3.connect("academy_attendance.db")
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM attendance WHERE roll_no = ?", (roll_to_delete,))
+                    cursor.execute("DELETE FROM test_marks WHERE roll_no = ?", (roll_to_delete,))
+                    cursor.execute("DELETE FROM students WHERE roll_no = ?", (roll_to_delete,))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"Student with Roll No {roll_to_delete} deleted successfully.")
+                    st.rerun()
+
+            with col_del2:
+                st.write("")
+                st.write("")
+                if st.button("Clear All Students & Reset Database", type="primary"):
+                    conn = sqlite3.connect("academy_attendance.db")
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM attendance")
+                    cursor.execute("DELETE FROM test_marks")
+                    cursor.execute("DELETE FROM students")
+                    cursor.execute("DELETE FROM sqlite_sequence WHERE name='students'")
+                    conn.commit()
+                    conn.close()
+                    st.success("All student records cleared successfully.")
+                    st.rerun()
+        else:
+            st.info("No students enrolled yet.")
 
 # ==========================================
 # TAB 2: MARK ATTENDANCE
@@ -180,7 +247,7 @@ with tab2:
     conn.close()
 
     if not classes:
-        st.warning("No classes found. Please add students first in the 'Manage Students' tab.")
+        st.warning("No classes found. Please add students first.")
     else:
         col_c1, col_c2 = st.columns(2)
         with col_c1:
@@ -317,7 +384,7 @@ with tab3:
         st.info("No attendance records found.")
 
 # ==========================================
-# TAB 4: TEST REPORTS (NEW SECTION)
+# TAB 4: TEST REPORTS
 # ==========================================
 with tab4:
     st.subheader("Student Test Marks & Reports")
@@ -339,7 +406,6 @@ with tab4:
             with col_t1:
                 test_class = st.selectbox("Test Class", options=classes, key="test_class")
             
-            # Fetch subjects for selected class
             conn = sqlite3.connect("academy_attendance.db")
             cursor = conn.cursor()
             cursor.execute("SELECT subjects FROM students WHERE class_name = ?", (test_class,))
@@ -389,7 +455,6 @@ with tab4:
                     test_scores = {}
                     with st.form("test_marks_form"):
                         for roll_no, name in enrolled_students:
-                            # Check if marks already exist for this test
                             cursor.execute(
                                 "SELECT obtained_marks FROM test_marks WHERE roll_no = ? AND class_name = ? AND subject = ? AND test_name = ? AND date = ?",
                                 (roll_no, test_class, test_subject, test_name, str(test_date))
@@ -418,7 +483,7 @@ with tab4:
                                 cursor.execute(
                                     "SELECT * FROM test_marks WHERE roll_no = ? AND class_name = ? AND subject = ? AND test_name = ? AND date = ?",
                                     (roll_no, test_class, test_subject, test_name, str(test_date))
-                                    )
+                                )
                                 record = cursor.fetchone()
 
                                 if record:
