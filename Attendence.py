@@ -66,17 +66,22 @@ st.set_page_config(
 init_db()
 
 
-# Function to convert local monogram image to base64 for embedding
+# Function to safely convert local monogram image to base64
 @st.cache_data
 def get_image_base64(path):
   try:
     with open(path, "rb") as image_file:
-      return base64.b64encode(image_file.read()).decode()
+      return (
+          base64.b64encode(image_file.read())
+          .decode("utf-8")
+          .replace("\n", "")
+          .replace("\r", "")
+      )
   except Exception:
     return ""
 
 
-# Load monogram image as base64
+# Load monogram image as base64 safely
 img_base64 = get_image_base64("monomono.png")
 img_src = f"data:image/png;base64,{img_base64}" if img_base64 else ""
 
