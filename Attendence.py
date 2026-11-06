@@ -1,4 +1,3 @@
-import base64
 from datetime import date
 import psycopg2
 import streamlit as st
@@ -65,30 +64,15 @@ st.set_page_config(
 # Initialize database on startup
 init_db()
 
-
-# Function to convert local monogram image to base64 for embedding
-@st.cache_data
-def get_image_base64(path):
-  try:
-    with open(path, "rb") as image_file:
-      return base64.b64encode(image_file.read()).decode()
-  except Exception:
-    return ""
-
-
-# Load monogram image as base64
-img_base64 = get_image_base64("monomono.png")
-img_src = f"data:image/png;base64,{img_base64}" if img_base64 else ""
-
 # Custom Styling & Header Design
 st.markdown(
-    f"""
+    """
     <style>
-    .main {{
+    .main {
         background-color: #0e1117;
-    }}
+    }
     /* Login button styling */
-    .stButton>button {{
+    .stButton>button {
         width: 100%;
         background-color: #6b1426;
         color: white;
@@ -96,46 +80,41 @@ st.markdown(
         height: 45px;
         font-weight: bold;
         border: none;
-    }}
-    .stButton>button:hover {{
+    }
+    .stButton>button:hover {
         background-color: #851a31;
         color: white;
-    }}
+    }
     /* Side panels look */
-    .side-panel-left {{
+    .side-panel-left {
         background: linear-gradient(135deg, #1e1e2f 0%, #0f0f1a 100%);
         padding: 30px;
         border-radius: 10px;
         color: white;
         text-align: center;
         height: 100%;
-    }}
-    .side-panel-right {{
+    }
+    .side-panel-right {
         background-color: #f0f2f6;
         padding: 25px;
         border-radius: 10px;
         color: #333333;
         height: 100%;
-    }}
-    /* Circular monogram container styling */
-    .monogram-circle {{
+    }
+    /* Circular monogram frame styling */
+    .monogram-frame {
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        overflow: hidden;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
         border: 3px solid #ffd700;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        margin-bottom: 10px;
+        margin: 0 auto 10px auto;
+        overflow: hidden;
         background-color: white;
-    }}
-    .monogram-circle img {{
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }}
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
     </style>
 """,
     unsafe_allow_html=True,
@@ -220,26 +199,37 @@ if not st.session_state.logged_in:
 
   # --- Right Column (Monogram, Mission and Vision) ---
   with col3:
-    st.markdown(
-        f"""
-        <div class="side-panel-right">
-            <div style="text-align: center;">
-                <!-- Academy monogram image inside the perfect circle -->
-                <div class="monogram-circle">
-                    <img src="{img_src}" alt="Monogram">
+    with st.container():
+      st.markdown(
+          """
+            <div class="side-panel-right">
+                <div style="text-align: center;">
+            """,
+          unsafe_allow_html=True,
+      )
+
+      # Displaying image inside circle using Streamlit native function
+      st.markdown('<div class="monogram-frame">', unsafe_allow_html=True)
+      try:
+        st.image("monomono.png", width=75)
+      except Exception:
+        st.write("Logo")
+      st.markdown("</div>", unsafe_allow_html=True)
+
+      st.markdown(
+          """
+                    <h4 style="margin: 0; color: #6b1426; font-weight: bold;">AIMS SCIENCE ACADEMY</h4>
+                    <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Official Portal & Monogram</p>
                 </div>
-                <h4 style="margin: 0; color: #6b1426; font-weight: bold;">AIMS SCIENCE ACADEMY</h4>
-                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Official Portal & Monogram</p>
+                <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
+                <div style="font-size: 13px; color: #333;">
+                    <p><b>🌍 Mission:</b><br>A Community of Scholars</p>
+                    <p><b>💡 Vision:</b><br>Providing exceptional, accessible education and fostering growth.</p>
+                </div>
             </div>
-            <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
-            <div style="font-size: 13px; color: #333;">
-                <p><b>🌍 Mission:</b><br>A Community of Scholars</p>
-                <p><b>💡 Vision:</b><br>Providing exceptional, accessible education and fostering growth.</p>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+          unsafe_allow_html=True,
+      )
   st.stop()
 
 # ==========================================
@@ -321,15 +311,10 @@ if tab1 is not None:
 
     with col_logo:
       st.markdown(
-          f"""
-            <div class="side-panel-right" style="margin-top: 30px;">
-                <div style="text-align: center;">
-                    <div class="monogram-circle">
-                        <img src="{img_src}" alt="Monogram">
-                    </div>
-                    <h4 style="margin: 0; color: #6b1426; font-weight: bold;">AIMS SCIENCE ACADEMY</h4>
-                    <p style="font-size: 11px; color: #666; margin-bottom: 10px;">Admin Controls</p>
-                </div>
+          """
+            <div class="side-panel-right" style="margin-top: 30px; text-align: center;">
+                <h4 style="color: #6b1426; font-weight: bold; margin: 0;">AIMS SCIENCE ACADEMY</h4>
+                <p style="font-size: 11px; color: #666; margin: 5px 0 0 0;">Admin Portal Controls</p>
             </div>
         """,
           unsafe_allow_html=True,
