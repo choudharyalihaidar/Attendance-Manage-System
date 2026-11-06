@@ -82,13 +82,13 @@ img_src = f"data:image/png;base64,{img_base64}" if img_base64 else ""
 
 # Custom Styling & Header Design
 st.markdown(
-    f"""
+    """
     <style>
-    .main {{
+    .main {
         background-color: #0e1117;
-    }}
+    }
     /* Login button styling */
-    .stButton>button {{
+    .stButton>button {
         width: 100%;
         background-color: #6b1426;
         color: white;
@@ -96,40 +96,46 @@ st.markdown(
         height: 45px;
         font-weight: bold;
         border: none;
-    }}
-    .stButton>button:hover {{
+    }
+    .stButton>button:hover {
         background-color: #851a31;
         color: white;
-    }}
+    }
     /* Side panels look */
-    .side-panel-left {{
+    .side-panel-left {
         background: linear-gradient(135deg, #1e1e2f 0%, #0f0f1a 100%);
         padding: 30px;
         border-radius: 10px;
         color: white;
         text-align: center;
         height: 100%;
-    }}
-    .side-panel-right {{
+    }
+    .side-panel-right {
         background-color: #f0f2f6;
         padding: 25px;
         border-radius: 10px;
         color: #333333;
         height: 100%;
-    }}
+    }
     /* Circular monogram container styling */
-    .monogram-circle {{
+    .monogram-circle {
         width: 80px;
         height: 80px;
         border-radius: 50%;
         border: 3px solid #ffd700;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         margin: 0 auto 10px auto;
-        background-image: url('{img_src}');
-        background-size: cover;
-        background-position: center;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background-color: white;
-    }}
+    }
+    .monogram-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
     </style>
 """,
     unsafe_allow_html=True,
@@ -215,11 +221,13 @@ if not st.session_state.logged_in:
   # --- Right Column (Monogram, Mission and Vision) ---
   with col3:
     st.markdown(
-        """
+        f"""
         <div class="side-panel-right">
             <div style="text-align: center;">
-                <!-- Academy monogram image strictly inside the circle as background -->
-                <div class="monogram-circle"></div>
+                <!-- Academy monogram image inside the perfect circle -->
+                <div class="monogram-circle">
+                    <img src="{img_src}" alt="Monogram">
+                </div>
                 <h4 style="margin: 0; color: #6b1426; font-weight: bold;">AIMS SCIENCE ACADEMY</h4>
                 <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Official Portal & Monogram</p>
             </div>
@@ -313,10 +321,13 @@ if tab1 is not None:
 
     with col_logo:
       st.markdown(
-          """
+          f"""
             <div class="side-panel-right" style="margin-top: 30px; text-align: center;">
-                <h4 style="color: #6b1426; font-weight: bold; margin: 0;">AIMS SCIENCE ACADEMY</h4>
-                <p style="font-size: 11px; color: #666; margin: 5px 0 0 0;">Admin Portal Controls</p>
+                <div class="monogram-circle" style="width: 60px; height: 60px; margin: 0 auto 5px auto;">
+                    <img src="{img_src}" alt="Monogram">
+                </div>
+                <h4 style="color: #6b1426; font-weight: bold; margin: 0; font-size: 16px;">AIMS SCIENCE ACADEMY</h4>
+                <p style="font-size: 10px; color: #666; margin: 2px 0 0 0;">Admin Portal Controls</p>
             </div>
         """,
           unsafe_allow_html=True,
