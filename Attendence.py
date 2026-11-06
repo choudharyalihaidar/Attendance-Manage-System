@@ -1,3 +1,4 @@
+import base64
 from datetime import date
 import psycopg2
 import streamlit as st
@@ -64,25 +65,77 @@ st.set_page_config(
 # Initialize database on startup
 init_db()
 
-# Custom Styling & Header Design (Centered Content)
+
+# Function to convert local monogram image to base64 for embedding
+@st.cache_data
+def get_image_base64(path):
+  try:
+    with open(path, "rb") as image_file:
+      return base64.b64encode(image_file.read()).decode()
+  except Exception:
+    return ""
+
+
+# Load monogram image as base64
+img_base64 = get_image_base64("monomono.png")
+img_src = f"data:image/png;base64,{img_base64}" if img_base64 else ""
+
+# Custom Styling & Header Design
 st.markdown(
-    """
+    f"""
     <style>
-    .main {
-        background-color: #MintCream;
-    }
-    .monogram-box {
-        background-color: #f0f4f8;
+    .main {{
+        background-color: #0e1117;
+    }}
+    /* Login button styling */
+    .stButton>button {{
+        width: 100%;
+        background-color: #6b1426;
+        color: white;
+        border-radius: 5px;
+        height: 45px;
+        font-weight: bold;
+        border: none;
+    }}
+    .stButton>button:hover {{
+        background-color: #851a31;
+        color: white;
+    }}
+    /* Side panels look */
+    .side-panel-left {{
+        background: linear-gradient(135deg, #1e1e2f 0%, #0f0f1a 100%);
         padding: 30px;
         border-radius: 10px;
+        color: white;
         text-align: center;
-        border: 2px solid #b0c4de;
-        margin-top: 30px;
-        display: flex;
-        flex-direction: column;
+        height: 100%;
+    }}
+    .side-panel-right {{
+        background-color: #f0f2f6;
+        padding: 25px;
+        border-radius: 10px;
+        color: #333333;
+        height: 100%;
+    }}
+    /* Circular monogram container styling */
+    .monogram-circle {{
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        overflow: hidden;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-    }
+        border: 3px solid #ffd700;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        margin-bottom: 10px;
+        background-color: white;
+    }}
+    .monogram-circle img {{
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }}
     </style>
 """,
     unsafe_allow_html=True,
@@ -94,54 +147,96 @@ if "logged_in" not in st.session_state:
   st.session_state.role = None
 
 # ==========================================
-# LOGIN SCREEN
+# LOGIN SCREEN (3-COLUMN LAYOUT WITH MONOGRAM)
 # ==========================================
 if not st.session_state.logged_in:
-  st.title("🎓 AIMS Science Academy - Login Portal")
+  col1, col2, col3 = st.columns([1.2, 2, 1.2])
 
-  col_l1, col_l2 = st.columns([1, 1])
-  with col_l1:
-    st.markdown("### Please Login")
-    login_role = st.selectbox(
-        "Select Account Type", ["Class Teacher", "Admin / Programmer"]
-    )
-
-    username_input = st.text_input("Username")
-    password_input = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-      if login_role == "Admin / Programmer":
-        if (
-            username_input == "admin"
-            and password_input == "ChoudharyAli4321"
-        ):
-          st.session_state.logged_in = True
-          st.session_state.role = "admin"
-          st.success("Admin login successful!")
-          st.rerun()
-        else:
-          st.error("Incorrect Admin username or password!")
-      else:
-        if username_input == "teacher" and password_input == "abcd4321":
-          st.session_state.logged_in = True
-          st.session_state.role = "teacher"
-          st.success("Class Teacher login successful!")
-          st.rerun()
-        else:
-          st.error("Incorrect Teacher username or password!")
-  with col_l2:
+  # --- Left Column (Academy name and motto) ---
+  with col1:
     st.markdown(
         """
-            <div class="monogram-box">
-                <h3 style="color: #1e3a8a; margin: 0; font-size: 28px;">AIMS</h3>
-                <p style="color: #7f1d1d; font-weight: bold; font-size: 11px; margin: 5px 0 15px 0; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
-                <hr style="width: 80%; border: 0; border-top: 1px solid #b0c4de; margin: 5px 0 15px 0;">
-                <p style="font-size: 13px; color: #333333; margin: 0; line-height: 1.5;">
-                    <b>Instructions:</b><br>
-                    - Admin (You) are authorized to add, edit, and manage student records.<br>
-                    - Class Teachers can mark attendance and enter test scores.
-                </p>
+        <div class="side-panel-left">
+            <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
+            <div style="font-size: 50px; margin: 30px 0;">🎓</div>
+            <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
+                "ILLUMINATING MINDS, SHAPING FUTURES."
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+  # --- Middle Column (Login form) ---
+  with col2:
+    st.markdown(
+        "<h2 style='text-align: center; color: #ffffff;'>Welcome to</h2>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<h1 style='text-align: center; color: #6b1426; font-size: 28px;"
+        " margin-bottom: 30px;'>AIMS Science Academy</h1>",
+        unsafe_allow_html=True,
+    )
+
+    with st.form("login_form"):
+      login_role = st.selectbox(
+          "Select Account Type", ["Class Teacher", "Admin / Programmer"]
+      )
+      username_input = st.text_input("Username", placeholder="Your Username")
+      password_input = st.text_input(
+          "Password", type="password", placeholder="Your Password"
+      )
+
+      st.markdown(
+          "<p style='text-align: right; font-size: 12px;'><a"
+          " href='#' style='text-decoration: none; color: #aaa;'>Forgot"
+          " Password?</a></p>",
+          unsafe_allow_html=True,
+      )
+
+      login_submitted = st.form_submit_button("Login")
+
+      if login_submitted:
+        if login_role == "Admin / Programmer":
+          if (
+              username_input == "admin"
+              and password_input == "ChoudharyAli4321"
+          ):
+            st.session_state.logged_in = True
+            st.session_state.role = "admin"
+            st.success("Admin login successful!")
+            st.rerun()
+          else:
+            st.error("Incorrect Admin username or password!")
+        else:
+          if username_input == "teacher" and password_input == "abcd4321":
+            st.session_state.logged_in = True
+            st.session_state.role = "teacher"
+            st.success("Class Teacher login successful!")
+            st.rerun()
+          else:
+            st.error("Incorrect Teacher username or password!")
+
+  # --- Right Column (Monogram, Mission and Vision) ---
+  with col3:
+    st.markdown(
+        f"""
+        <div class="side-panel-right">
+            <div style="text-align: center;">
+                <!-- Academy monogram image inside the perfect circle -->
+                <div class="monogram-circle">
+                    <img src="{img_src}" alt="Monogram">
+                </div>
+                <h4 style="margin: 0; color: #6b1426; font-weight: bold;">AIMS SCIENCE ACADEMY</h4>
+                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Official Portal & Monogram</p>
             </div>
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
+            <div style="font-size: 13px; color: #333;">
+                <p><b>🌍 Mission:</b><br>A Community of Scholars</p>
+                <p><b>💡 Vision:</b><br>Providing exceptional, accessible education and fostering growth.</p>
+            </div>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -226,12 +321,17 @@ if tab1 is not None:
 
     with col_logo:
       st.markdown(
-          """
-                <div class="monogram-box">
-                    <h3 style="color: #1e3a8a; margin: 0; font-size: 28px; font-weight: bold;">AIMS</h3>
-                    <p style="color: #7f1d1d; margin: 5px 0 0 0; font-size: 11px; font-weight: bold; letter-spacing: 1px;">AIMS SCIENCE ACADEMY</p>
+          f"""
+            <div class="side-panel-right" style="margin-top: 30px;">
+                <div style="text-align: center;">
+                    <div class="monogram-circle">
+                        <img src="{img_src}" alt="Monogram">
+                    </div>
+                    <h4 style="margin: 0; color: #6b1426; font-weight: bold;">AIMS SCIENCE ACADEMY</h4>
+                    <p style="font-size: 11px; color: #666; margin-bottom: 10px;">Admin Controls</p>
                 </div>
-            """,
+            </div>
+        """,
           unsafe_allow_html=True,
       )
 
