@@ -1312,6 +1312,8 @@ with tab4:
                 )
 
                 selected_tests_indices = []
+
+                # Form for checkboxes
                 with st.form("select_tests_form"):
                     for idx, test in enumerate(student_tests):
                         test_label = (
@@ -1324,26 +1326,37 @@ with tab4:
                         if is_checked:
                             selected_tests_indices.append(idx)
 
-                    generate_pdf_btn = st.form_submit_button(
-                        "Generate & Download PDF Report"
-                    )
+                    generate_btn = st.form_submit_button("Generate Report Data")
 
-                    if generate_pdf_btn:
-                        if not selected_tests_indices:
-                            st.warning(
-                                "Please select at least one test to generate the"
-                                " PDF report!"
-                            )
-                        else:
-                            chosen_records = [
-                                student_tests[i] for i in selected_tests_indices
-                            ]
-                            pdf_data = generate_aims_report_pdf(chosen_records)
-                            st.download_button(
-                                label="💾 Click here to download PDF",
-                                data=pdf_data,
-                                file_name=f"AIMS_Report_{selected_roll}.pdf",
-                                mime="application/pdf",
-                            )
+                # Handle form submission and download button OUTSIDE the form
+                if generate_btn:
+                    if not selected_tests_indices:
+                        st.warning(
+                            "Please select at least one test to generate the"
+                            " PDF report!"
+                        )
+                    else:
+                        st.session_state["selected_tests_indices"] = (
+                            selected_tests_indices
+                        )
+                        st.session_state["selected_roll"] = selected_roll
+                        st.success("Report data generated successfully!")
+
+                # Render download button outside the form if data exists in session state
+                if (
+                    "selected_tests_indices" in st.session_state
+                    and st.session_state.get("selected_roll") == selected_roll
+                ):
+                    chosen_records = [
+                        student_tests[i]
+                        for i in st.session_state["selected_tests_indices"]
+                    ]
+                    pdf_data = generate_aims_report_pdf(chosen_records)
+                    st.download_button(
+                        label="💾 Click here to download PDF",
+                        data=pdf_data,
+                        file_name=f"AIMS_Report_{selected_roll}.pdf",
+                        mime="application/pdf",
+                    )
         else:
             st.info("No test records found.")
