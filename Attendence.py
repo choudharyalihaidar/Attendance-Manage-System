@@ -940,7 +940,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (CUSTOMIZED INFO BOX)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (OBTAINED LEFT, TOTAL RIGHT)
             # ==========================================
             def generate_aims_report_pdf(record):
                 name, roll_no, class_name, subject, test_name, obt, tot, test_date = (
@@ -964,7 +964,6 @@ with tab4:
                     grade = "F"
                     status = "NEEDS IMPROVEMENT"
 
-                # Current date for PDF generation day
                 current_printing_date = str(date.today())
 
                 filename = f"AIMS_Report_{roll_no}_{test_name.replace(' ', '_')}.pdf"
@@ -1000,14 +999,14 @@ with tab4:
                     textColor=colors.HexColor("#444444"),
                 )
 
-                header_box_style = ParagraphStyle(
-                    "HeaderBoxStyle",
+                report_title_style = ParagraphStyle(
+                    "ReportTitleStyle",
                     parent=styles["Normal"],
                     fontName="Helvetica-Bold",
-                    fontSize=11,
-                    leading=14,
+                    fontSize=10,
+                    leading=13,
                     alignment=TA_CENTER,
-                    textColor=colors.HexColor("#222222"),
+                    textColor=colors.white,
                 )
 
                 section_heading = ParagraphStyle(
@@ -1093,7 +1092,7 @@ with tab4:
 
                 # Report Title Bar
                 report_title = Table(
-                    [[Paragraph("STUDENT TEST PERFORMANCE REPORT", header_box_style)]],
+                    [[Paragraph("STUDENT TEST PERFORMANCE REPORT", report_title_style)]],
                     colWidths=[540],
                 )
                 report_title.setStyle(
@@ -1102,9 +1101,8 @@ with tab4:
                             "BACKGROUND",
                             (0, 0),
                             (-1, -1),
-                            colors.HexColor("#D3D3D3"),
+                            colors.HexColor("#5A1818"),
                         ),
-                        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#999999")),
                         ("TOPPADDING", (0, 0), (-1, -1), 5),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                     ])
@@ -1126,7 +1124,7 @@ with tab4:
                 story.append(principal_p)
                 story.append(Spacer(1, 8))
 
-                # 2. Re-arranged Student Info Box (As per your exact instruction)
+                # 2. Student Info Box
                 info_data = [
                     [
                         Paragraph("<b>Student Name</b>", cell_bold),
@@ -1180,22 +1178,22 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table
+                # 3. Marks Breakdown Table (Marks Obtained on Left, Total Marks on Right)
                 marks_data = [
                     [
                         Paragraph("<b>Topic/Section</b>", section_heading),
-                        Paragraph("<b>Total Marks</b>", section_heading),
                         Paragraph("<b>Marks Obtained</b>", section_heading),
+                        Paragraph("<b>Total Marks</b>", section_heading),
                     ],
                     [
                         Paragraph(f"Test Component ({test_name})", cell_style),
-                        Paragraph(str(tot), cell_style),
                         Paragraph(str(obt), cell_style),
+                        Paragraph(str(tot), cell_style),
                     ],
                     [
                         Paragraph("<b>TOTAL MARKS</b>", cell_bold),
-                        Paragraph(f"<b>{tot}</b>", cell_bold),
                         Paragraph(f"<b>{obt}</b>", cell_bold),
+                        Paragraph(f"<b>{tot}</b>", cell_bold),
                     ],
                 ]
                 marks_table = Table(marks_data, colWidths=[300, 120, 120])
