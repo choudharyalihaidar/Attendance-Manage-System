@@ -643,7 +643,7 @@ with tab3:
             FROM attendance 
             JOIN students ON students.roll_no = attendance.roll_no 
             WHERE attendance.roll_no = %s
-            ORDER BY attendance.date DESC
+            ORDER BY attendance.date ASC
         """,
             (filter_roll,),
         )
@@ -652,7 +652,7 @@ with tab3:
             SELECT students.name, students.roll_no, attendance.class_name, attendance.subject, attendance.date, attendance.status 
             FROM attendance 
             JOIN students ON students.roll_no = attendance.roll_no
-            ORDER BY attendance.date DESC
+            ORDER BY attendance.date ASC
         """)
 
     records = cursor.fetchall()
@@ -691,7 +691,8 @@ with tab3:
                     date_map[d_str] = {}
                 date_map[d_str][sub_name] = status_val
 
-            sorted_dates = sorted(list(all_dates_set), reverse=True)
+            # Oldest date first, newest date last (Ascending order)
+            sorted_dates = sorted(list(all_dates_set), reverse=False)
 
             total_days = len(sorted_dates)
             days_present = 0
@@ -986,7 +987,6 @@ with tab3:
             # Last Row: Exactly 3 equal parts spanning across all columns
             total_cols = len(col_widths)
             
-            # Divide columns into 3 equal spans
             span_size = total_cols // 3
             rem = total_cols % 3
 
@@ -1014,7 +1014,6 @@ with tab3:
                 ("SPAN", (1, 0), (num_subs if num_subs > 0 else 1, 0)),
                 ("SPAN", (0, 0), (0, 1)),
                 ("SPAN", (-1, 0), (-1, 1)),
-                # Span last summary row into 3 equal parts
                 ("SPAN", (c1_start, -1), (c1_end, -1)),
                 ("SPAN", (c2_start, -1), (c2_end, -1)),
                 ("SPAN", (c3_start, -1), (c3_end, -1)),
@@ -1717,7 +1716,6 @@ with tab4:
                 else:
                     behaviour_text = "Poor"
 
-                # Last row: 3 columns where column 1 & 2 are spanned together to match column 0 (270 width each)
                 marks_rows.append([
                     Paragraph("<b>Overall Behaviour</b>", cell_bold),
                     Paragraph(f"<b>{behaviour_text}</b>", cell_center_bold),
@@ -1738,7 +1736,6 @@ with tab4:
                         ("ALIGN", (1, 0), (-1, -1), "CENTER"),
                         ("TOPPADDING", (0, 0), (-1, -1), 5),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                        # Span columns 1 and 2 together so total width of right block is 270 (matching col 0)
                         ("SPAN", (1, -1), (2, -1)),
                         (
                             "BACKGROUND",
