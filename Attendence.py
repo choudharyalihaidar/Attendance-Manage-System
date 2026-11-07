@@ -682,7 +682,6 @@ with tab3:
             current_printing_date = str(date.today())
 
             # Group records by Date
-            # date_map[date_str][subject] = status
             date_map = {}
             all_dates_set = set()
             for r in selected_records:
@@ -694,8 +693,6 @@ with tab3:
 
             sorted_dates = sorted(list(all_dates_set), reverse=True)
 
-            # Calculate Overall Attendance for each date based on condition:
-            # Present if present in half or more of the selected subjects.
             total_days = len(sorted_dates)
             days_present = 0
             days_absent = 0
@@ -795,16 +792,6 @@ with tab3:
                 fontSize=9,
                 leading=12,
                 alignment=TA_CENTER,
-                textColor=colors.white,
-            )
-
-            section_heading_left = ParagraphStyle(
-                "SectionHeadingLeft",
-                parent=styles["Normal"],
-                fontName="Helvetica-Bold",
-                fontSize=9,
-                leading=12,
-                alignment=TA_LEFT,
                 textColor=colors.white,
             )
 
@@ -916,7 +903,6 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # Subject label string for info box
             subj_label_str = ", ".join(selected_pdf_subjects) if selected_pdf_subjects else "None"
 
             # 2. Student Info Box
@@ -968,7 +954,6 @@ with tab3:
 
             # 3. Dynamic Matrix Attendance Table Construction
             num_subs = len(selected_pdf_subjects)
-            # Total width = 540. Date width = 100, Overall width = 110. Remaining for subjects = 330.
             if num_subs > 0:
                 sub_col_width = 330.0 / num_subs
             else:
@@ -976,7 +961,6 @@ with tab3:
 
             col_widths = [100.0] + [sub_col_width] * max(num_subs, 1) + [110.0]
 
-            # Header rows (2 rows for spanned "Subjects" header as shown in user image)
             header_row_1 = [Paragraph("<b>Date</b>", section_heading), Paragraph("<b>Subjects</b>", section_heading)]
             for _ in range(1, max(num_subs, 1)):
                 header_row_1.append("")
@@ -991,7 +975,6 @@ with tab3:
 
             matrix_rows = [header_row_1, header_row_2]
 
-            # Data rows
             for row in processed_rows_data:
                 r_cells = [Paragraph(row["date"], cell_style)]
                 for st_val in row["subjects"]:
@@ -1000,41 +983,43 @@ with tab3:
                 r_cells.append(Paragraph(f"<b>{row['overall']}</b>", cell_center_bold))
                 matrix_rows.append(r_cells)
 
-            # Last Row: 3 equal parts for Total Days, Days Present, Days Absent
-            # We have (2 + num_subs) columns. Let's span them appropriately or divide into 3 sections.
-            # Total columns = len(col_widths). Let's divide indices into 3 roughly equal chunks.
+            # Last Row: Exactly 3 equal parts spanning across all columns
             total_cols = len(col_widths)
-            part_size = total_cols // 3
             
-            summary_row = [Paragraph(f"<b>Total Days: {total_days}</b>", cell_bold)]
-            for _ in range(1, total_cols):
-                summary_row.append("")
+            # Divide columns into 3 equal spans
+            span_size = total_cols // 3
+            rem = total_cols % 3
+
+            c1_start = 0
+            c1_end = span_size + (1 if rem > 0 else 0) - 1
+
+            c2_start = c1_end + 1
+            c2_end = c2_start + span_size + (1 if rem > 1 else 0) - 1
+
+            c3_start = c2_end + 1
+            c3_end = total_cols - 1
+
+            summary_row = [Paragraph("", cell_bold)] * total_cols
+            summary_row[c1_start] = Paragraph(f"<b>Total Days: {total_days}</b>", cell_bold)
+            summary_row[c2_start] = Paragraph(f"<b>Days Present: {days_present}</b>", cell_bold)
+            summary_row[c3_start] = Paragraph(f"<b>Days Absent: {days_absent}</b>", cell_bold)
             matrix_rows.append(summary_row)
 
-            matrix_table = Table(matrix_rows, colWidths=col_widths)
-            
             table_style_commands = [
                 ("BACKGROUND", (0, 0), (-1, 1), colors.HexColor("#7A2222")),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("SPAN", (1, 0), (num_subs if num_subs > 0 else 1, 0)), # Span Subjects header across all subject columns
-                ("SPAN", (0, 0), (0, 1)), # Span Date header vertically
-                ("SPAN", (-1, 0), (-1, 1)), # Span Overall Attendance header vertically
-                # Span last summary row into 3 parts
-                ("SPAN", (0, -1), (part_size - 1, -1)),
-                ("SPAN", (part_size, -1), (part_size * 2 - 1, -1)),
-                ("SPAN", (part_size * 2, -1), (-1, -1)),
+                ("SPAN", (1, 0), (num_subs if num_subs > 0 else 1, 0)),
+                ("SPAN", (0, 0), (0, 1)),
+                ("SPAN", (-1, 0), (-1, 1)),
+                # Span last summary row into 3 equal parts
+                ("SPAN", (c1_start, -1), (c1_end, -1)),
+                ("SPAN", (c2_start, -1), (c2_end, -1)),
+                ("SPAN", (c3_start, -1), (c3_end, -1)),
                 ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#EFEFEF")),
             ]
-
-            # Re-insert summary texts into the spanned cells of the last row
-            # Since we span columns, let's put text in the starting cell of each span
-            matrix_rows[-1] = [Paragraph("", cell_bold)] * total_cols
-            matrix_rows[-1][0] = Paragraph(f"<b>Total Days: {total_days}</b>", cell_bold)
-            matrix_rows[-1][part_size] = Paragraph(f"<b>Days Present: {days_present}</b>", cell_bold)
-            matrix_rows[-1][part_size * 2] = Paragraph(f"<b>Days Absent: {days_absent}</b>", cell_bold)
 
             matrix_table = Table(matrix_rows, colWidths=col_widths)
             matrix_table.setStyle(TableStyle(table_style_commands))
