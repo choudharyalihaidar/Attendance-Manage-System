@@ -486,8 +486,11 @@ if tab1 is not None:
 # ==========================================
 with tab2:
     st.subheader("Mark Daily Attendance")
-    today_str = str(date.today())
-    st.info(f"Current Date: **{today_str}**")
+    
+    # Date Picker added at the very top of Mark Attendance section
+    selected_date = st.date_input("Select Attendance Date", value=date.today(), key="att_date_picker")
+    today_str = str(selected_date)
+    st.info(f"Active Attendance Date: **{today_str}**")
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -555,7 +558,7 @@ with tab2:
             else:
                 st.write(
                     f"Marking attendance for **{selected_class}** -"
-                    f" **{selected_subject}**"
+                    f" **{selected_subject}** on **{today_str}**"
                 )
 
                 attendance_status = {}
