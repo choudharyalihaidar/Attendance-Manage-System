@@ -441,7 +441,9 @@ if tab1 is not None:
           conn.commit()
           cursor.close()
           conn.close()
-          st.success(f"Student with Roll No {roll_to_delete} deleted successfully.")
+          st.success(
+              f"Student with Roll No {roll_to_delete} deleted successfully."
+          )
           st.rerun()
 
       with col_del2:
@@ -725,8 +727,14 @@ with tab4:
               f"Entering marks for **{test_class}** - **{test_subject}**"
               f" ({test_name})"
           )
+          st.info(
+              "💡 Uncheck 'Include' for any student who was absent or whose"
+              " marks shouldn't be added."
+          )
 
           test_scores = {}
+          test_includes = {}
+
           with st.form("test_marks_form"):
             for roll_no, name in enrolled_students:
               cursor.execute(
@@ -737,8 +745,17 @@ with tab4:
               )
               existing_score = cursor.fetchone()
               default_score = existing_score[0] if existing_score else 0.0
+              # Agar pehle se record mojood hai to checkbox default True hoga
+              default_include = True if existing_score else True
 
-              col_s1, col_s2 = st.columns([2, 2])
+              col_inc, col_s1, col_s2 = st.columns([1, 2, 2])
+              with col_inc:
+                include_student = st.checkbox(
+                    "Include",
+                    value=default_include,
+                    key=f"inc_{roll_no}",
+                )
+                test_includes[roll_no] = include_student
               with col_s1:
                 st.write(f"**{name}** `({roll_no})`")
               with col_s2:
@@ -756,6 +773,9 @@ with tab4:
             submit_marks = st.form_submit_button("Save Test Marks")
             if submit_marks:
               for roll_no, obtained in test_scores.items():
+                is_included = test_includes.get(roll_no, True)
+
+                # Pehle check karein ke record database me mojood hai ya nahi
                 cursor.execute(
                     "SELECT * FROM test_marks WHERE roll_no = %s AND class_name ="
                     " %s AND subject = %s AND test_name = %s AND date = %s",
@@ -763,40 +783,57 @@ with tab4:
                 )
                 record = cursor.fetchone()
 
-                if record:
-                  cursor.execute(
-                      "UPDATE test_marks SET obtained_marks = %s, total_marks ="
-                      " %s WHERE roll_no = %s AND class_name = %s AND subject ="
-                      " %s AND test_name = %s AND date = %s",
-                      (
-                          obtained,
-                          total_marks,
-                          roll_no,
-                          test_class,
-                          test_subject,
-                          test_name,
-                          str(test_date),
-                      ),
-                  )
+                if not is_included:
+                  # Agar user ne checkbox hata diya hai, aur database me record tha, to use delete kar dein
+                  if record:
+                    cursor.execute(
+                        "DELETE FROM test_marks WHERE roll_no = %s AND"
+                        " class_name = %s AND subject = %s AND test_name = %s"
+                        " AND date = %s",
+                        (
+                            roll_no,
+                            test_class,
+                            test_subject,
+                            test_name,
+                            str(test_date),
+                        ),
+                    )
                 else:
-                  cursor.execute(
-                      "INSERT INTO test_marks (roll_no, class_name, subject,"
-                      " test_name, obtained_marks, total_marks, date) VALUES"
-                      " (%s, %s, %s, %s, %s, %s, %s)",
-                      (
-                          roll_no,
-                          test_class,
-                          test_subject,
-                          test_name,
-                          obtained,
-                          total_marks,
-                          str(test_date),
-                      ),
-                  )
+                  # Agar checkbox ticked hai to insert ya update karein
+                  if record:
+                    cursor.execute(
+                        "UPDATE test_marks SET obtained_marks = %s, total_marks ="
+                        " %s WHERE roll_no = %s AND class_name = %s AND subject ="
+                        " %s AND test_name = %s AND date = %s",
+                        (
+                            obtained,
+                            total_marks,
+                            roll_no,
+                            test_class,
+                            test_subject,
+                            test_name,
+                            str(test_date),
+                        ),
+                    )
+                  else:
+                    cursor.execute(
+                        "INSERT INTO test_marks (roll_no, class_name, subject,"
+                        " test_name, obtained_marks, total_marks, date) VALUES"
+                        " (%s, %s, %s, %s, %s, %s, %s)",
+                        (
+                            roll_no,
+                            test_class,
+                            test_subject,
+                            test_name,
+                            obtained,
+                            total_marks,
+                            str(test_date),
+                        ),
+                    )
               conn.commit()
               st.success("Test marks saved successfully!")
-        cursor.close()
-        conn.close()
+          cursor.close()
+          conn.close()
 
   else:
     st.markdown("### View Test Records & Reports")
