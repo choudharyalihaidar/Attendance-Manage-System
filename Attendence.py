@@ -175,7 +175,7 @@ if not st.session_state.logged_in:
   # --- Middle Column (Login form) ---
   with col2:
     st.markdown(
-        "<h2 style='text-align: center; color: #8B0000;'>Welcome to</h2>",
+        "<h2 style='text-align: center; color: #FFD700;'>Welcome to</h2>",
         unsafe_allow_html=True,
     )
     st.markdown(
