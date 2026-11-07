@@ -676,9 +676,9 @@ with tab3:
         # ==========================================
         # PROFESSIONAL ATTENDANCE PDF GENERATOR
         # ==========================================
-        def generate_aims_attendance_pdf(selected_records, days_range_label):
+        def generate_aims_attendance_pdf(selected_records, subject_range_label, days_range_label):
             first_rec = selected_records[0]
-            name, roll_no, class_name, subject, _, _ = first_rec
+            name, roll_no, class_name, _, _, _ = first_rec
             current_printing_date = str(date.today())
 
             total_days = len(selected_records)
@@ -877,17 +877,17 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # 2. Student Info Box
+            # 2. Student Info Box (Exact layout setup: Left & Right stacking)
             info_data = [
-                [
-                    Paragraph("<b>Roll No.</b>", cell_bold),
-                    Paragraph(f": {roll_no}", cell_style),
-                    Paragraph("<b>Subject / Range</b>", cell_bold),
-                    Paragraph(f": {subject} ({days_range_label})", cell_style),
-                ],
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
                     Paragraph(f": {name}", cell_style),
+                    Paragraph("<b>Subject / Range</b>", cell_bold),
+                    Paragraph(f": {subject_range_label} ({days_range_label})", cell_style),
+                ],
+                [
+                    Paragraph("<b>Roll No.</b>", cell_bold),
+                    Paragraph(f": {roll_no}", cell_style),
                     Paragraph("<b>Report Date</b>", cell_bold),
                     Paragraph(f": {current_printing_date}", cell_style),
                 ],
@@ -929,7 +929,7 @@ with tab3:
             )
             story.append(log_title)
 
-            # 3. Daily Attendance Table (Matching exact layout from picture)
+            # 3. Daily Attendance Table
             log_rows = [
                 [
                     Paragraph("<b>Date</b>", section_heading),
@@ -968,7 +968,7 @@ with tab3:
                     ),
                 ])
 
-            # Summary Totals Row inside Table matching picture
+            # Summary Totals Row inside Table
             log_rows.append([
                 Paragraph("<b>Total Days</b>", cell_bold),
                 Paragraph(f"<b>{total_days}</b>", cell_bold),
@@ -1119,15 +1119,20 @@ with tab3:
                 return f.read()
 
         # ==========================================
-        # ATTENDANCE PDF DOWNLOAD WIDGET (ADDED AT TAB 3 END)
+        # ATTENDANCE PDF DOWNLOAD WIDGET (WITH SUBJECT MULTISELECT)
         # ==========================================
         st.divider()
         st.subheader("📥 Download Student Attendance PDF Report")
 
         student_dict = {}
+        student_subjects_dict = {}
         for r in records:
-            s_name, s_roll = r[0], r[1]
+            s_name, s_roll, _, s_sub, _, _ = r
             student_dict[s_roll] = s_name
+            if s_roll not in student_subjects_dict:
+                student_subjects_dict[s_roll] = set()
+            if s_sub:
+                student_subjects_dict[s_roll].add(s_sub)
 
         col_att_sel1, col_att_sel2 = st.columns(2)
         with col_att_sel1:
@@ -1150,8 +1155,24 @@ with tab3:
             )
 
         if selected_att_roll:
+            available_student_subjects = sorted(
+                list(student_subjects_dict.get(selected_att_roll, []))
+            )
+            selected_pdf_subjects = st.multiselect(
+                "Select Subject(s) for PDF Report (Leave empty or select multiple)",
+                options=available_student_subjects,
+                default=available_student_subjects,
+                key="att_pdf_subjects",
+            )
+
             student_att_records = [
-                r for r in records if r[1] == selected_att_roll
+                r
+                for r in records
+                if r[1] == selected_att_roll
+                and (
+                    not selected_pdf_subjects
+                    or r[3] in selected_pdf_subjects
+                )
             ]
 
             # Filter records based on selected days range
@@ -1179,11 +1200,19 @@ with tab3:
 
             if not student_att_records:
                 st.warning(
-                    f"No attendance records found for this student in '{days_option}'."
+                    "No attendance records found for the selected student, subjects, and duration."
                 )
             else:
+                if (
+                    not selected_pdf_subjects
+                    or len(selected_pdf_subjects) == len(available_student_subjects)
+                ):
+                    subj_label = "All Subjects"
+                else:
+                    subj_label = ", ".join(selected_pdf_subjects)
+
                 pdf_att_data = generate_aims_attendance_pdf(
-                    student_att_records, days_option
+                    student_att_records, subj_label, days_option
                 )
                 st.download_button(
                     label="💾 Click here to download Attendance PDF",
