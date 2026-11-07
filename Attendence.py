@@ -940,7 +940,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (MERGED LAST ROW)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (EQUAL 2-COLUMN LAST ROW)
             # ==========================================
             def generate_aims_report_pdf(selected_records):
                 first_rec = selected_records[0]
@@ -1014,6 +1014,16 @@ with tab4:
                     fontName="Helvetica-Bold",
                     fontSize=9,
                     leading=12,
+                    textColor=colors.HexColor("#111111"),
+                )
+
+                cell_center_bold = ParagraphStyle(
+                    "CellCenterBold",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=9,
+                    leading=12,
+                    alignment=TA_CENTER,
                     textColor=colors.HexColor("#111111"),
                 )
 
@@ -1159,7 +1169,7 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table with Merged Behavior Row
+                # 3. Marks Breakdown Table with Equal 2-Column Layout for Last Row
                 marks_rows = [
                     [
                         Paragraph("<b>Test Title</b>", section_heading),
@@ -1196,14 +1206,14 @@ with tab4:
                 else:
                     behaviour_text = "Poor"
 
-                # Last row: Column 0 & 1 merged for "Overall Behaviour", Column 2 for condition result
+                # Last row: 2 equal columns (colWidths 270 + 270)
                 marks_rows.append([
                     Paragraph("<b>Overall Behaviour</b>", cell_bold),
-                    "",  # Empty placeholder for span
-                    Paragraph(f"<b>{behaviour_text}</b>", cell_bold),
+                    Paragraph(f"<b>{behaviour_text}</b>", cell_center_bold),
+                    "",  # Empty placeholder for span in 3rd column
                 ])
 
-                marks_table = Table(marks_rows, colWidths=[210, 165, 165])
+                marks_table = Table(marks_rows, colWidths=[270, 270, 0])  # 3rd column width set to 0 as it's spanned across
                 marks_table.setStyle(
                     TableStyle([
                         (
@@ -1217,8 +1227,8 @@ with tab4:
                         ("ALIGN", (1, 0), (-1, -1), "CENTER"),
                         ("TOPPADDING", (0, 0), (-1, -1), 5),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                        # Span first two cells of the last row together
-                        ("SPAN", (0, -1), (1, -1)),
+                        # Span columns 1 and 2 of the last row together to make them equal (270 each)
+                        ("SPAN", (1, -1), (2, -1)),
                         (
                             "BACKGROUND",
                             (0, -1),
