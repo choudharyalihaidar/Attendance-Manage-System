@@ -943,7 +943,6 @@ with tab4:
             # PROFESSIONAL REPORTLAB PDF GENERATOR (MULTI-TEST SELECTION)
             # ==========================================
             def generate_aims_report_pdf(selected_records):
-                # We use student info from the first record
                 first_rec = selected_records[0]
                 name, roll_no, class_name, subject, _, _, _, _ = first_rec
                 current_printing_date = str(date.today())
@@ -1160,7 +1159,7 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table (Dynamic Multi-Row)
+                # 3. Marks Breakdown Table
                 marks_rows = [
                     [
                         Paragraph("<b>Topic/Section</b>", section_heading),
@@ -1185,7 +1184,6 @@ with tab4:
                         Paragraph(f"{pct:.1f}%", cell_style),
                     ])
 
-                # Grand Total Row
                 overall_pct = (
                     (total_obt_all / total_tot_all) * 100
                     if total_tot_all > 0
@@ -1292,7 +1290,6 @@ with tab4:
                 "📥 Download Student Test Performance Report (Multi-Test Selection)"
             )
 
-            # Extract unique students from test records based on Roll No
             student_dict = {}
             for r in test_records:
                 s_name, s_roll = r[0], r[1]
@@ -1305,20 +1302,18 @@ with tab4:
             )
 
             if selected_roll:
-                # Fetch all tests for this specific student
                 student_tests = [
                     r for r in test_records if r[1] == selected_roll
                 ]
                 st.info(
-                    f"💡 Is student ke total **{len(student_tests)}** test(s)"
-                    " mojood hain. Aap kis kis test ko PDF file mein shamil"
-                    " karna chahte hain?"
+                    f"This student has a total of **{len(student_tests)}**"
+                    " test(s). Which tests would you like to include in the"
+                    " PDF file?"
                 )
 
                 selected_tests_indices = []
                 with st.form("select_tests_form"):
                     for idx, test in enumerate(student_tests):
-                        # test format: (name, roll, class, subject, test_name, obt, tot, date)
                         test_label = (
                             f"Subject: **{test[3]}** | Test: **{test[4]}** |"
                             f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
@@ -1336,7 +1331,8 @@ with tab4:
                     if generate_pdf_btn:
                         if not selected_tests_indices:
                             st.warning(
-                                "Kam az kam aik test select karna lazmi hai!"
+                                "Please select at least one test to generate the"
+                                " PDF report!"
                             )
                         else:
                             chosen_records = [
