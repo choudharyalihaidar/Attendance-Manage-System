@@ -940,17 +940,15 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (REMARKS & SIGNATURES PUSHED TO BOTTOM)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (MULTI-TEST SELECTION)
             # ==========================================
-            def generate_aims_report_pdf(record):
-                name, roll_no, class_name, subject, test_name, obt, tot, test_date = (
-                    record
-                )
-                percentage = (obt / tot) * 100 if tot > 0 else 0.0
-
+            def generate_aims_report_pdf(selected_records):
+                # We use student info from the first record
+                first_rec = selected_records[0]
+                name, roll_no, class_name, subject, _, _, _, _ = first_rec
                 current_printing_date = str(date.today())
 
-                filename = f"AIMS_Report_{roll_no}_{test_name.replace(' ', '_')}.pdf"
+                filename = f"AIMS_Report_{roll_no}_{subject.replace(' ', '_')}.pdf"
                 doc = SimpleDocTemplate(
                     filename,
                     pagesize=letter,
@@ -1162,28 +1160,45 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table
-                marks_data = [
+                # 3. Marks Breakdown Table (Dynamic Multi-Row)
+                marks_rows = [
                     [
                         Paragraph("<b>Topic/Section</b>", section_heading),
                         Paragraph("<b>Marks Obtained</b>", section_heading),
                         Paragraph("<b>Total Marks</b>", section_heading),
                         Paragraph("<b>Percentage</b>", section_heading),
-                    ],
-                    [
-                        Paragraph(f"Test Component ({test_name})", cell_style),
+                    ]
+                ]
+
+                total_obt_all = 0.0
+                total_tot_all = 0.0
+
+                for r in selected_records:
+                    _, _, _, _, t_name, obt, tot, _ = r
+                    pct = (obt / tot) * 100 if tot > 0 else 0.0
+                    total_obt_all += obt
+                    total_tot_all += tot
+                    marks_rows.append([
+                        Paragraph(f"Test Component ({t_name})", cell_style),
                         Paragraph(str(obt), cell_style),
                         Paragraph(str(tot), cell_style),
-                        Paragraph(f"{percentage:.1f}%", cell_style),
-                    ],
-                    [
-                        Paragraph("<b>TOTAL MARKS</b>", cell_bold),
-                        Paragraph(f"<b>{obt}</b>", cell_bold),
-                        Paragraph(f"<b>{tot}</b>", cell_bold),
-                        Paragraph(f"<b>{percentage:.1f}%</b>", cell_bold),
-                    ],
-                ]
-                marks_table = Table(marks_data, colWidths=[210, 110, 110, 110])
+                        Paragraph(f"{pct:.1f}%", cell_style),
+                    ])
+
+                # Grand Total Row
+                overall_pct = (
+                    (total_obt_all / total_tot_all) * 100
+                    if total_tot_all > 0
+                    else 0.0
+                )
+                marks_rows.append([
+                    Paragraph("<b>TOTAL MARKS</b>", cell_bold),
+                    Paragraph(f"<b>{total_obt_all}</b>", cell_bold),
+                    Paragraph(f"<b>{total_tot_all}</b>", cell_bold),
+                    Paragraph(f"<b>{overall_pct:.1f}%</b>", cell_bold),
+                ])
+
+                marks_table = Table(marks_rows, colWidths=[210, 110, 110, 110])
                 marks_table.setStyle(
                     TableStyle([
                         (
@@ -1207,8 +1222,7 @@ with tab4:
                 )
                 story.append(marks_table)
 
-                # Pushing Remarks and Signatures to the bottom of the page
-                story.append(Spacer(1, 230))
+                story.append(Spacer(1, 200))
 
                 # 4. Teacher's Remarks Section
                 remarks_title = Paragraph(
@@ -1274,21 +1288,66 @@ with tab4:
                     return f.read()
 
             st.write("---")
-            st.subheader("📥 Download Individual Student Test Report (PDF)")
-            selected_record_idx = st.selectbox(
-                "Select Test Record to Download PDF",
-                options=range(len(test_records)),
-                format_func=lambda i: f"{test_records[i][0]} (Roll: {test_records[i][1]}) - {test_records[i][3]} [{test_records[i][4]}]",
+            st.subheader(
+                "📥 Download Student Test Performance Report (Multi-Test Selection)"
             )
 
-            if st.button("Generate & Download PDF Report"):
-                chosen_rec = test_records[selected_record_idx]
-                pdf_data = generate_aims_report_pdf(chosen_rec)
-                st.download_button(
-                    label="💾 Download PDF",
-                    data=pdf_data,
-                    file_name=f"AIMS_Report_{chosen_rec[1]}_{chosen_rec[4].replace(' ', '_')}.pdf",
-                    mime="application/pdf",
+            # Extract unique students from test records based on Roll No
+            student_dict = {}
+            for r in test_records:
+                s_name, s_roll = r[0], r[1]
+                student_dict[s_roll] = s_name
+
+            selected_roll = st.selectbox(
+                "Select Student Roll Number",
+                options=list(student_dict.keys()),
+                format_func=lambda roll: f"{student_dict[roll]} (Roll: {roll})",
+            )
+
+            if selected_roll:
+                # Fetch all tests for this specific student
+                student_tests = [
+                    r for r in test_records if r[1] == selected_roll
+                ]
+                st.info(
+                    f"💡 Is student ke total **{len(student_tests)}** test(s)"
+                    " mojood hain. Aap kis kis test ko PDF file mein shamil"
+                    " karna chahte hain?"
                 )
+
+                selected_tests_indices = []
+                with st.form("select_tests_form"):
+                    for idx, test in enumerate(student_tests):
+                        # test format: (name, roll, class, subject, test_name, obt, tot, date)
+                        test_label = (
+                            f"Subject: **{test[3]}** | Test: **{test[4]}** |"
+                            f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
+                        )
+                        is_checked = st.checkbox(
+                            test_label, value=True, key=f"test_chk_{idx}"
+                        )
+                        if is_checked:
+                            selected_tests_indices.append(idx)
+
+                    generate_pdf_btn = st.form_submit_button(
+                        "Generate & Download PDF Report"
+                    )
+
+                    if generate_pdf_btn:
+                        if not selected_tests_indices:
+                            st.warning(
+                                "Kam az kam aik test select karna lazmi hai!"
+                            )
+                        else:
+                            chosen_records = [
+                                student_tests[i] for i in selected_tests_indices
+                            ]
+                            pdf_data = generate_aims_report_pdf(chosen_records)
+                            st.download_button(
+                                label="💾 Click here to download PDF",
+                                data=pdf_data,
+                                file_name=f"AIMS_Report_{selected_roll}.pdf",
+                                mime="application/pdf",
+                            )
         else:
             st.info("No test records found.")
