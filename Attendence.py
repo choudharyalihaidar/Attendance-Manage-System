@@ -940,7 +940,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (UPDATED BREAKDOWN TABLE & NO SUMMARY)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (REMARKS & SIGNATURES PUSHED TO BOTTOM)
             # ==========================================
             def generate_aims_report_pdf(record):
                 name, roll_no, class_name, subject, test_name, obt, tot, test_date = (
@@ -1162,8 +1162,7 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table (4 Columns: Topic, Marks Obtained, Total Marks, Percentage)
-                # Total width = 210 + 110 + 110 + 110 = 540
+                # 3. Marks Breakdown Table
                 marks_data = [
                     [
                         Paragraph("<b>Topic/Section</b>", section_heading),
@@ -1207,7 +1206,9 @@ with tab4:
                     ])
                 )
                 story.append(marks_table)
-                story.append(Spacer(1, 15))
+
+                # Pushing Remarks and Signatures to the bottom of the page
+                story.append(Spacer(1, 230))
 
                 # 4. Teacher's Remarks Section
                 remarks_title = Paragraph(
@@ -1242,7 +1243,7 @@ with tab4:
                     ])
                 )
                 story.append(remarks_table)
-                story.append(Spacer(1, 40))
+                story.append(Spacer(1, 25))
 
                 # 5. Signatures Section
                 sig_data = [
