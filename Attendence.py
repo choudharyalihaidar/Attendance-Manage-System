@@ -877,7 +877,7 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # 2. Student Info Box ('Range' removed from Subject label)
+            # 2. Student Info Box (Class/Batch removed as requested)
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
@@ -892,8 +892,8 @@ with tab3:
                     Paragraph(f": {subject_range_label}", cell_style),
                 ],
                 [
-                    Paragraph("<b>Class/Batch</b>", cell_bold),
-                    Paragraph(f": {class_name}", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
                     Paragraph("<b>Duration</b>", cell_bold),
                     Paragraph(f": {days_range_label}", cell_style),
                 ],
@@ -929,12 +929,11 @@ with tab3:
             )
             story.append(log_title)
 
-            # 3. Daily Attendance Table
+            # 3. Daily Attendance Table (Month column and "(Class)" removed, adjusted into 3 columns: Date, Subject, Status)
             log_rows = [
                 [
                     Paragraph("<b>Date</b>", section_heading),
-                    Paragraph("<b>Month</b>", section_heading),
-                    Paragraph("<b>Subject/Class Session</b>", section_heading),
+                    Paragraph("<b>Subject</b>", section_heading),
                     Paragraph("<b>Attendance Status</b>", section_heading),
                 ]
             ]
@@ -944,15 +943,12 @@ with tab3:
                 try:
                     dt_obj = date.fromisoformat(d_str)
                     formatted_date = dt_obj.strftime("%b %d, %Y")
-                    month_name = dt_obj.strftime("%B")
                 except Exception:
                     formatted_date = d_str
-                    month_name = "-"
 
                 log_rows.append([
                     Paragraph(formatted_date, cell_style),
-                    Paragraph(month_name, cell_style),
-                    Paragraph(f"{sub_name} (Class)", cell_style),
+                    Paragraph(sub_name, cell_style),
                     Paragraph(
                         f"<b>{status_val}</b>",
                         ParagraphStyle(
@@ -968,15 +964,14 @@ with tab3:
                     ),
                 ])
 
-            # Summary Totals Row inside Table
+            # Summary Totals Row inside Table (3 columns matching widths: 150, 240, 150)
             log_rows.append([
-                Paragraph("<b>Total Days</b>", cell_bold),
-                Paragraph(f"<b>{total_days}</b>", cell_bold),
+                Paragraph(f"<b>Total Days | {total_days}</b>", cell_bold),
                 Paragraph(f"<b>Days Present | {days_present}</b>", cell_bold),
                 Paragraph(f"<b>Days Absent | {days_absent}</b>", cell_bold),
             ])
 
-            log_table = Table(log_rows, colWidths=[120, 110, 180, 130])
+            log_table = Table(log_rows, colWidths=[150, 240, 150])
             log_table.setStyle(
                 TableStyle([
                     (
@@ -987,7 +982,7 @@ with tab3:
                     ),
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (3, 1), (3, -1), "CENTER"),
+                    ("ALIGN", (2, 1), (2, -1), "CENTER"),
                     ("TOPPADDING", (0, 0), (-1, -1), 5),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                     (
