@@ -674,34 +674,76 @@ with tab3:
         st.dataframe(report_table, use_container_width=True)
 
         # ==========================================
-        # PROFESSIONAL ATTENDANCE PDF GENERATOR
+        # PROFESSIONAL ATTENDANCE PDF GENERATOR (MATRIX FORMAT)
         # ==========================================
-        def generate_aims_attendance_pdf(selected_records, subject_range_label, days_range_label):
+        def generate_aims_attendance_pdf(selected_records, selected_pdf_subjects, days_range_label):
             first_rec = selected_records[0]
             name, roll_no, class_name, _, _, _ = first_rec
             current_printing_date = str(date.today())
 
-            total_days = len(selected_records)
-            days_present = sum(
-                1 for r in selected_records if r[5].lower() == "present"
-            )
-            days_absent = total_days - days_present
-            attendance_pct = (
-                (days_present / total_days) * 100 if total_days > 0 else 0.0
-            )
+            # Group records by Date
+            # date_map[date_str][subject] = status
+            date_map = {}
+            all_dates_set = set()
+            for r in selected_records:
+                _, _, _, sub_name, d_str, status_val = r
+                all_dates_set.add(d_str)
+                if d_str not in date_map:
+                    date_map[d_str] = {}
+                date_map[d_str][sub_name] = status_val
+
+            sorted_dates = sorted(list(all_dates_set), reverse=True)
+
+            # Calculate Overall Attendance for each date based on condition:
+            # Present if present in half or more of the selected subjects.
+            total_days = len(sorted_dates)
+            days_present = 0
+            days_absent = 0
+
+            processed_rows_data = []
+            for d_str in sorted_dates:
+                try:
+                    dt_obj = date.fromisoformat(d_str)
+                    formatted_date = dt_obj.strftime("%d-%b-%Y")
+                except Exception:
+                    formatted_date = d_str
+
+                present_count = 0
+                subject_statuses = []
+                for sub in selected_pdf_subjects:
+                    status = date_map.get(d_str, {}).get(sub, "-")
+                    if status.lower() == "present":
+                        present_count += 1
+                        subject_statuses.append("P")
+                    elif status.lower() == "absent":
+                        subject_statuses.append("A")
+                    else:
+                        subject_statuses.append("-")
+
+                # Condition: half or more subjects present
+                threshold = (len(selected_pdf_subjects) + 1) // 2 if selected_pdf_subjects else 1
+                if selected_pdf_subjects and present_count >= threshold:
+                    overall_status = "P"
+                    days_present += 1
+                else:
+                    overall_status = "A" if selected_pdf_subjects else "-"
+                    if selected_pdf_subjects:
+                        days_absent += 1
+
+                processed_rows_data.append({
+                    "date": formatted_date,
+                    "subjects": subject_statuses,
+                    "overall": overall_status
+                })
+
+            attendance_pct = (days_present / total_days) * 100 if total_days > 0 else 0.0
 
             if attendance_pct >= 85.0:
-                remarks_text = (
-                    "Punctuality is excellent. Keep it up for consistent"
-                    " academic progress."
-                )
+                remarks_text = "Punctuality is excellent. Keep it up for consistent academic progress."
             elif attendance_pct >= 60.0:
                 remarks_text = "Good attendance, but try to maintain regularity."
             else:
-                remarks_text = (
-                    "Attendance is below required criteria. Immediate"
-                    " improvement needed."
-                )
+                remarks_text = "Attendance is below required criteria. Immediate improvement needed."
 
             filename = f"AIMS_Attendance_Report_{roll_no}.pdf"
             doc = SimpleDocTemplate(
@@ -750,8 +792,19 @@ with tab3:
                 "SectionHeading",
                 parent=styles["Normal"],
                 fontName="Helvetica-Bold",
-                fontSize=10,
-                leading=13,
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
+                textColor=colors.white,
+            )
+
+            section_heading_left = ParagraphStyle(
+                "SectionHeadingLeft",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                alignment=TA_LEFT,
                 textColor=colors.white,
             )
 
@@ -764,12 +817,32 @@ with tab3:
                 textColor=colors.HexColor("#111111"),
             )
 
+            cell_center = ParagraphStyle(
+                "CellCenter",
+                parent=styles["Normal"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#111111"),
+            )
+
             cell_bold = ParagraphStyle(
                 "CellBold",
                 parent=styles["Normal"],
                 fontName="Helvetica-Bold",
                 fontSize=9,
                 leading=12,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            cell_center_bold = ParagraphStyle(
+                "CellCenterBold",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
                 textColor=colors.HexColor("#111111"),
             )
 
@@ -782,9 +855,7 @@ with tab3:
             header_text_content = [
                 Paragraph("<b>AIMS SCIENCE ACADEMY</b>", title_style),
                 Spacer(1, 2),
-                Paragraph(
-                    '"Illuminating Minds, Shaping Futures"', subtitle_style
-                ),
+                Paragraph('"Illuminating Minds, Shaping Futures"', subtitle_style),
                 Spacer(1, 3),
                 Paragraph(
                     "Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email:"
@@ -804,24 +875,13 @@ with tab3:
             )
             header_table.setStyle(
                 TableStyle([
-                    (
-                        "BOX",
-                        (0, 0),
-                        (-1, -1),
-                        1.5,
-                        colors.HexColor("#2A2B6E"),
-                    ),
+                    ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#2A2B6E")),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("TOPPADDING", (0, 0), (-1, -1), 6),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
                     ("LEFTPADDING", (0, 0), (-1, -1), 6),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, -1),
-                        colors.HexColor("#F9F9F9"),
-                    ),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F9F9F9")),
                 ])
             )
             story.append(header_table)
@@ -834,12 +894,7 @@ with tab3:
             )
             report_title.setStyle(
                 TableStyle([
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, -1),
-                        colors.HexColor("#5A1818"),
-                    ),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
                     ("TOPPADDING", (0, 0), (-1, -1), 5),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                 ])
@@ -861,13 +916,16 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
+            # Subject label string for info box
+            subj_label_str = ", ".join(selected_pdf_subjects) if selected_pdf_subjects else "None"
+
             # 2. Student Info Box
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
                     Paragraph(f": {name}", cell_style),
                     Paragraph("<b>Subject</b>", cell_bold),
-                    Paragraph(f": {subject_range_label}", cell_style),
+                    Paragraph(f": {subj_label_str}", cell_style),
                 ],
                 [
                     Paragraph("<b>Roll No.</b>", cell_bold),
@@ -894,92 +952,95 @@ with tab3:
             story.append(info_table)
             story.append(Spacer(1, 10))
 
-            # Daily Attendance Title (Log word removed)
+            # Daily Attendance Title
             log_title = Table(
-                [[Paragraph("DAILY ATTENDANCE", section_heading)]],
+                [[Paragraph("DAILY ATTENDANCE", report_title_style)]],
                 colWidths=[540],
             )
             log_title.setStyle(
                 TableStyle([
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, -1),
-                        colors.HexColor("#5A1818"),
-                    ),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
                     ("TOPPADDING", (0, 0), (-1, -1), 5),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                 ])
             )
             story.append(log_title)
 
-            # 3. Daily Attendance Table
-            log_rows = [
-                [
-                    Paragraph("<b>Date</b>", section_heading),
-                    Paragraph("<b>Subject</b>", section_heading),
-                    Paragraph("<b>Attendance Status</b>", section_heading),
-                ]
+            # 3. Dynamic Matrix Attendance Table Construction
+            num_subs = len(selected_pdf_subjects)
+            # Total width = 540. Date width = 100, Overall width = 110. Remaining for subjects = 330.
+            if num_subs > 0:
+                sub_col_width = 330.0 / num_subs
+            else:
+                sub_col_width = 330.0
+
+            col_widths = [100.0] + [sub_col_width] * max(num_subs, 1) + [110.0]
+
+            # Header rows (2 rows for spanned "Subjects" header as shown in user image)
+            header_row_1 = [Paragraph("<b>Date</b>", section_heading), Paragraph("<b>Subjects</b>", section_heading)]
+            for _ in range(1, max(num_subs, 1)):
+                header_row_1.append("")
+            header_row_1.append(Paragraph("<b>Overall Attendance</b>", section_heading))
+
+            header_row_2 = [Paragraph("", section_heading)]
+            for sub in selected_pdf_subjects:
+                header_row_2.append(Paragraph(f"<b>{sub}</b>", section_heading))
+            if num_subs == 0:
+                header_row_2.append(Paragraph("<b>-</b>", section_heading))
+            header_row_2.append(Paragraph("", section_heading))
+
+            matrix_rows = [header_row_1, header_row_2]
+
+            # Data rows
+            for row in processed_rows_data:
+                r_cells = [Paragraph(row["date"], cell_style)]
+                for st_val in row["subjects"]:
+                    color_code = "#006600" if st_val == "P" else ("#990000" if st_val == "A" else "#333333")
+                    r_cells.append(Paragraph(f"<font color='{color_code}'><b>{st_val}</b></font>", cell_center))
+                r_cells.append(Paragraph(f"<b>{row['overall']}</b>", cell_center_bold))
+                matrix_rows.append(r_cells)
+
+            # Last Row: 3 equal parts for Total Days, Days Present, Days Absent
+            # We have (2 + num_subs) columns. Let's span them appropriately or divide into 3 sections.
+            # Total columns = len(col_widths). Let's divide indices into 3 roughly equal chunks.
+            total_cols = len(col_widths)
+            part_size = total_cols // 3
+            
+            summary_row = [Paragraph(f"<b>Total Days: {total_days}</b>", cell_bold)]
+            for _ in range(1, total_cols):
+                summary_row.append("")
+            matrix_rows.append(summary_row)
+
+            matrix_table = Table(matrix_rows, colWidths=col_widths)
+            
+            table_style_commands = [
+                ("BACKGROUND", (0, 0), (-1, 1), colors.HexColor("#7A2222")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("SPAN", (1, 0), (num_subs if num_subs > 0 else 1, 0)), # Span Subjects header across all subject columns
+                ("SPAN", (0, 0), (0, 1)), # Span Date header vertically
+                ("SPAN", (-1, 0), (-1, 1)), # Span Overall Attendance header vertically
+                # Span last summary row into 3 parts
+                ("SPAN", (0, -1), (part_size - 1, -1)),
+                ("SPAN", (part_size, -1), (part_size * 2 - 1, -1)),
+                ("SPAN", (part_size * 2, -1), (-1, -1)),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#EFEFEF")),
             ]
 
-            for r in selected_records:
-                _, _, _, sub_name, d_str, status_val = r
-                try:
-                    dt_obj = date.fromisoformat(d_str)
-                    formatted_date = dt_obj.strftime("%b %d, %Y")
-                except Exception:
-                    formatted_date = d_str
+            # Re-insert summary texts into the spanned cells of the last row
+            # Since we span columns, let's put text in the starting cell of each span
+            matrix_rows[-1] = [Paragraph("", cell_bold)] * total_cols
+            matrix_rows[-1][0] = Paragraph(f"<b>Total Days: {total_days}</b>", cell_bold)
+            matrix_rows[-1][part_size] = Paragraph(f"<b>Days Present: {days_present}</b>", cell_bold)
+            matrix_rows[-1][part_size * 2] = Paragraph(f"<b>Days Absent: {days_absent}</b>", cell_bold)
 
-                log_rows.append([
-                    Paragraph(formatted_date, cell_style),
-                    Paragraph(sub_name, cell_style),
-                    Paragraph(
-                        f"<b>{status_val}</b>",
-                        ParagraphStyle(
-                            "St",
-                            parent=cell_bold,
-                            textColor=(
-                                colors.HexColor("#006600")
-                                if status_val.lower() == "present"
-                                else colors.HexColor("#990000")
-                            ),
-                            alignment=TA_CENTER,
-                        ),
-                    ),
-                ])
+            matrix_table = Table(matrix_rows, colWidths=col_widths)
+            matrix_table.setStyle(TableStyle(table_style_commands))
 
-            # Summary Totals Row inside Table
-            log_rows.append([
-                Paragraph(f"<b>Total Days | {total_days}</b>", cell_bold),
-                Paragraph(f"<b>Days Present | {days_present}</b>", cell_bold),
-                Paragraph(f"<b>Days Absent | {days_absent}</b>", cell_bold),
-            ])
-
-            log_table = Table(log_rows, colWidths=[150, 240, 150])
-            log_table.setStyle(
-                TableStyle([
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor("#7A2222"),
-                    ),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (2, 1), (2, -1), "CENTER"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    (
-                        "BACKGROUND",
-                        (0, -1),
-                        (-1, -1),
-                        colors.HexColor("#EFEFEF"),
-                    ),
-                ])
-            )
-            story.append(log_table)
-
-            story.append(Spacer(1, 140))
+            story.append(matrix_table)
+            story.append(Spacer(1, 100))
 
             # 4. Teacher's Remarks Section
             remarks_title = Paragraph(
@@ -1023,9 +1084,7 @@ with tab3:
                 ],
                 [
                     Paragraph("<b>Parent's Signature</b>", cell_style),
-                    Paragraph(
-                        "<b>Principal / Teacher's Signature</b>", cell_style
-                    ),
+                    Paragraph("<b>Principal / Teacher's Signature</b>", cell_style),
                 ],
             ]
             sig_table = Table(sig_data, colWidths=[270, 270])
@@ -1084,7 +1143,7 @@ with tab3:
                 list(student_subjects_dict.get(selected_att_roll, []))
             )
             selected_pdf_subjects = st.multiselect(
-                "Select Subject(s) for PDF Report (Leave empty or select multiple)",
+                "Select Subject(s) for PDF Report Matrix",
                 options=available_student_subjects,
                 default=available_student_subjects,
                 key="att_pdf_subjects",
@@ -1128,16 +1187,8 @@ with tab3:
                     "No attendance records found for the selected student, subjects, and duration."
                 )
             else:
-                if (
-                    not selected_pdf_subjects
-                    or len(selected_pdf_subjects) == len(available_student_subjects)
-                ):
-                    subj_label = "All Subjects"
-                else:
-                    subj_label = ", ".join(selected_pdf_subjects)
-
                 pdf_att_data = generate_aims_attendance_pdf(
-                    student_att_records, subj_label, days_option
+                    student_att_records, selected_pdf_subjects, days_option
                 )
                 st.download_button(
                     label="💾 Click here to download Attendance PDF",
