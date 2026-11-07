@@ -1,5 +1,5 @@
 import base64
-from datetime import date
+from datetime import date, timedelta
 import psycopg2
 import streamlit as st
 
@@ -643,6 +643,7 @@ with tab3:
             FROM attendance 
             JOIN students ON students.roll_no = attendance.roll_no 
             WHERE attendance.roll_no = %s
+            ORDER BY attendance.date DESC
         """,
             (filter_roll,),
         )
@@ -651,6 +652,7 @@ with tab3:
             SELECT students.name, students.roll_no, attendance.class_name, attendance.subject, attendance.date, attendance.status 
             FROM attendance 
             JOIN students ON students.roll_no = attendance.roll_no
+            ORDER BY attendance.date DESC
         """)
 
     records = cursor.fetchall()
@@ -670,6 +672,525 @@ with tab3:
             for r in records
         ]
         st.dataframe(report_table, use_container_width=True)
+
+        # ==========================================
+        # PROFESSIONAL ATTENDANCE PDF GENERATOR
+        # ==========================================
+        def generate_aims_attendance_pdf(selected_records, days_range_label):
+            first_rec = selected_records[0]
+            name, roll_no, class_name, subject, _, _ = first_rec
+            current_printing_date = str(date.today())
+
+            total_days = len(selected_records)
+            days_present = sum(
+                1 for r in selected_records if r[5].lower() == "present"
+            )
+            days_absent = total_days - days_present
+            attendance_pct = (
+                (days_present / total_days) * 100 if total_days > 0 else 0.0
+            )
+
+            if attendance_pct >= 85.0:
+                att_status_text = "Pass / High Attendance"
+                punctuality_text = "Excellent"
+                remarks_text = (
+                    "Punctuality is excellent. Keep it up for consistent"
+                    " academic progress."
+                )
+            elif attendance_pct >= 60.0:
+                att_status_text = "Satisfactory Attendance"
+                punctuality_text = "Good"
+                remarks_text = "Good attendance, but try to maintain regularity."
+            else:
+                att_status_text = "Low Attendance (Warning)"
+                punctuality_text = "Poor"
+                remarks_text = (
+                    "Attendance is below required criteria. Immediate"
+                    " improvement needed."
+                )
+
+            filename = f"AIMS_Attendance_Report_{roll_no}.pdf"
+            doc = SimpleDocTemplate(
+                filename,
+                pagesize=letter,
+                rightMargin=36,
+                leftMargin=36,
+                topMargin=36,
+                bottomMargin=36,
+            )
+            story = []
+
+            styles = getSampleStyleSheet()
+
+            title_style = ParagraphStyle(
+                "TitleStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=15,
+                leading=18,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#2A2B6E"),
+            )
+
+            subtitle_style = ParagraphStyle(
+                "SubtitleStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica-Oblique",
+                fontSize=8.5,
+                leading=11,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#444444"),
+            )
+
+            report_title_style = ParagraphStyle(
+                "ReportTitleStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                leading=13,
+                alignment=TA_CENTER,
+                textColor=colors.white,
+            )
+
+            section_heading = ParagraphStyle(
+                "SectionHeading",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                leading=13,
+                textColor=colors.white,
+            )
+
+            cell_style = ParagraphStyle(
+                "CellStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            cell_bold = ParagraphStyle(
+                "CellBold",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            cell_center_bold = ParagraphStyle(
+                "CellCenterBold",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            # 1. Academy Header Section
+            try:
+                logo_img = Image("monomono.png", width=55, height=55)
+            except Exception:
+                logo_img = Paragraph("<b>[LOGO]</b>", cell_bold)
+
+            header_text_content = [
+                Paragraph("<b>AIMS SCIENCE ACADEMY</b>", title_style),
+                Spacer(1, 2),
+                Paragraph(
+                    '"Illuminating Minds, Shaping Futures"', subtitle_style
+                ),
+                Spacer(1, 3),
+                Paragraph(
+                    "Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email:"
+                    " aimsscienceacademy6@gmail.com",
+                    subtitle_style,
+                ),
+                Spacer(1, 2),
+                Paragraph(
+                    "Address: Inside Staff Gala, Near TIPS Model School Sargodha"
+                    " Road, Gujrat.",
+                    subtitle_style,
+                ),
+            ]
+
+            header_table = Table(
+                [[logo_img, header_text_content]], colWidths=[70, 470]
+            )
+            header_table.setStyle(
+                TableStyle([
+                    (
+                        "BOX",
+                        (0, 0),
+                        (-1, -1),
+                        1.5,
+                        colors.HexColor("#2A2B6E"),
+                    ),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, -1),
+                        colors.HexColor("#F9F9F9"),
+                    ),
+                ])
+            )
+            story.append(header_table)
+            story.append(Spacer(1, 10))
+
+            # Report Title Bar
+            report_title = Table(
+                [[Paragraph("STUDENT ATTENDANCE REPORT", report_title_style)]],
+                colWidths=[540],
+            )
+            report_title.setStyle(
+                TableStyle([
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, -1),
+                        colors.HexColor("#5A1818"),
+                    ),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ])
+            )
+            story.append(report_title)
+            story.append(Spacer(1, 5))
+
+            # Principal Subtitle
+            principal_p = Paragraph(
+                "<b>Principal: Choudhary Asim Walyat</b>",
+                ParagraphStyle(
+                    "Prin",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    alignment=TA_CENTER,
+                ),
+            )
+            story.append(principal_p)
+            story.append(Spacer(1, 8))
+
+            # 2. Student Info Box
+            info_data = [
+                [
+                    Paragraph("<b>Roll No.</b>", cell_bold),
+                    Paragraph(f": {roll_no}", cell_style),
+                    Paragraph("<b>Subject / Range</b>", cell_bold),
+                    Paragraph(f": {subject} ({days_range_label})", cell_style),
+                ],
+                [
+                    Paragraph("<b>Student Name</b>", cell_bold),
+                    Paragraph(f": {name}", cell_style),
+                    Paragraph("<b>Report Date</b>", cell_bold),
+                    Paragraph(f": {current_printing_date}", cell_style),
+                ],
+                [
+                    Paragraph("<b>Class/Batch</b>", cell_bold),
+                    Paragraph(f": {class_name}", cell_style),
+                    Paragraph("<b>Total Logged</b>", cell_bold),
+                    Paragraph(f": {total_days} Days", cell_style),
+                ],
+            ]
+            info_table = Table(info_data, colWidths=[90, 180, 90, 180])
+            info_table.setStyle(
+                TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#CCCCCC")),
+                ])
+            )
+            story.append(info_table)
+            story.append(Spacer(1, 10))
+
+            # Daily Attendance Log Title
+            log_title = Table(
+                [[Paragraph("DAILY ATTENDANCE LOG", section_heading)]],
+                colWidths=[540],
+            )
+            log_title.setStyle(
+                TableStyle([
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, -1),
+                        colors.HexColor("#5A1818"),
+                    ),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ])
+            )
+            story.append(log_title)
+
+            # 3. Daily Attendance Table (Matching exact layout from picture)
+            log_rows = [
+                [
+                    Paragraph("<b>Date</b>", section_heading),
+                    Paragraph("<b>Month</b>", section_heading),
+                    Paragraph("<b>Subject/Class Session</b>", section_heading),
+                    Paragraph("<b>Attendance Status</b>", section_heading),
+                ]
+            ]
+
+            for r in selected_records:
+                _, _, _, sub_name, d_str, status_val = r
+                try:
+                    dt_obj = date.fromisoformat(d_str)
+                    formatted_date = dt_obj.strftime("%b %d, %Y")
+                    month_name = dt_obj.strftime("%B")
+                except Exception:
+                    formatted_date = d_str
+                    month_name = "-"
+
+                log_rows.append([
+                    Paragraph(formatted_date, cell_style),
+                    Paragraph(month_name, cell_style),
+                    Paragraph(f"{sub_name} (Class)", cell_style),
+                    Paragraph(
+                        f"<b>{status_val}</b>",
+                        ParagraphStyle(
+                            "St",
+                            parent=cell_bold,
+                            textColor=(
+                                colors.HexColor("#006600")
+                                if status_val.lower() == "present"
+                                else colors.HexColor("#990000")
+                            ),
+                            alignment=TA_CENTER,
+                        ),
+                    ),
+                ])
+
+            # Summary Totals Row inside Table matching picture
+            log_rows.append([
+                Paragraph("<b>Total Days</b>", cell_bold),
+                Paragraph(f"<b>{total_days}</b>", cell_bold),
+                Paragraph(f"<b>Days Present | {days_present}</b>", cell_bold),
+                Paragraph(f"<b>Days Absent | {days_absent}</b>", cell_bold),
+            ])
+
+            log_table = Table(log_rows, colWidths=[120, 110, 180, 130])
+            log_table.setStyle(
+                TableStyle([
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
+                        colors.HexColor("#7A2222"),
+                    ),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (3, 1), (3, -1), "CENTER"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    (
+                        "BACKGROUND",
+                        (0, -1),
+                        (-1, -1),
+                        colors.HexColor("#EFEFEF"),
+                    ),
+                ])
+            )
+            story.append(log_table)
+            story.append(Spacer(1, 10))
+
+            # Attendance Summary Title Box
+            summary_title = Table(
+                [[Paragraph("ATTENDANCE SUMMARY", section_heading)]],
+                colWidths=[540],
+            )
+            summary_title.setStyle(
+                TableStyle([
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, -1),
+                        colors.HexColor("#5A1818"),
+                    ),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ])
+            )
+            story.append(summary_title)
+
+            # 3-Column Attendance Summary Data Box
+            summary_data = [
+                [
+                    Paragraph("<b>Percentage</b>", cell_center_bold),
+                    Paragraph("<b>Status</b>", cell_center_bold),
+                    Paragraph("<b>Punctuality</b>", cell_center_bold),
+                ],
+                [
+                    Paragraph(
+                        f"<b>{attendance_pct:.1f}%</b>", cell_center_bold
+                    ),
+                    Paragraph(f"<b>{att_status_text}</b>", cell_center_bold),
+                    Paragraph(f"<b>{punctuality_text}</b>", cell_center_bold),
+                ],
+            ]
+            summary_table = Table(
+                summary_data, colWidths=[180, 180, 180]
+            )
+            summary_table.setStyle(
+                TableStyle([
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
+                        colors.HexColor("#EAEAEA"),
+                    ),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ])
+            )
+            story.append(summary_table)
+
+            story.append(Spacer(1, 80))
+
+            # 4. Teacher's Remarks Section
+            remarks_title = Paragraph(
+                "<b>TEACHER'S REMARKS</b>",
+                ParagraphStyle(
+                    "RT",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    textColor=colors.HexColor("#111111"),
+                ),
+            )
+            remarks_p = Paragraph(
+                f'"{remarks_text}"',
+                ParagraphStyle(
+                    "RText",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Oblique",
+                    fontSize=9,
+                    textColor=colors.HexColor("#333333"),
+                ),
+            )
+
+            remarks_table = Table(
+                [[remarks_title], [remarks_p]], colWidths=[540]
+            )
+            remarks_table.setStyle(
+                TableStyle([
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ])
+            )
+            story.append(remarks_table)
+            story.append(Spacer(1, 25))
+
+            # 5. Signatures Section
+            sig_data = [
+                [
+                    Paragraph("____________________________", cell_style),
+                    Paragraph("____________________________", cell_style),
+                ],
+                [
+                    Paragraph("<b>Parent's Signature</b>", cell_style),
+                    Paragraph(
+                        "<b>Principal / Teacher's Signature</b>", cell_style
+                    ),
+                ],
+            ]
+            sig_table = Table(sig_data, colWidths=[270, 270])
+            sig_table.setStyle(
+                TableStyle([
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ])
+            )
+            story.append(sig_table)
+
+            doc.build(story)
+            with open(filename, "rb") as f:
+                return f.read()
+
+        # ==========================================
+        # ATTENDANCE PDF DOWNLOAD WIDGET (ADDED AT TAB 3 END)
+        # ==========================================
+        st.divider()
+        st.subheader("📥 Download Student Attendance PDF Report")
+
+        student_dict = {}
+        for r in records:
+            s_name, s_roll = r[0], r[1]
+            student_dict[s_roll] = s_name
+
+        col_att_sel1, col_att_sel2 = st.columns(2)
+        with col_att_sel1:
+            selected_att_roll = st.selectbox(
+                "Select Student for Attendance Report",
+                options=list(student_dict.keys()),
+                format_func=lambda roll: f"{student_dict[roll]} (Roll: {roll})",
+                key="att_pdf_roll",
+            )
+        with col_att_sel2:
+            days_option = st.selectbox(
+                "Select Attendance Duration",
+                options=[
+                    "All Records",
+                    "Last 7 Days",
+                    "Last 15 Days",
+                    "Last 30 Days",
+                ],
+                key="att_days_range",
+            )
+
+        if selected_att_roll:
+            student_att_records = [
+                r for r in records if r[1] == selected_att_roll
+            ]
+
+            # Filter records based on selected days range
+            if days_option == "Last 7 Days":
+                cutoff_date = date.today() - timedelta(days=7)
+                student_att_records = [
+                    r
+                    for r in student_att_records
+                    if date.fromisoformat(r[4]) >= cutoff_date
+                ]
+            elif days_option == "Last 15 Days":
+                cutoff_date = date.today() - timedelta(days=15)
+                student_att_records = [
+                    r
+                    for r in student_att_records
+                    if date.fromisoformat(r[4]) >= cutoff_date
+                ]
+            elif days_option == "Last 30 Days":
+                cutoff_date = date.today() - timedelta(days=30)
+                student_att_records = [
+                    r
+                    for r in student_att_records
+                    if date.fromisoformat(r[4]) >= cutoff_date
+                ]
+
+            if not student_att_records:
+                st.warning(
+                    f"No attendance records found for this student in '{days_option}'."
+                )
+            else:
+                pdf_att_data = generate_aims_attendance_pdf(
+                    student_att_records, days_option
+                )
+                st.download_button(
+                    label="💾 Click here to download Attendance PDF",
+                    data=pdf_att_data,
+                    file_name=f"AIMS_Attendance_Report_{selected_att_roll}.pdf",
+                    mime="application/pdf",
+                )
     else:
         st.info("No attendance records found.")
 
@@ -940,7 +1461,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (FIXED EQUAL 2-COLUMN LAST ROW)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (TEST REPORTS)
             # ==========================================
             def generate_aims_report_pdf(selected_records):
                 first_rec = selected_records[0]
