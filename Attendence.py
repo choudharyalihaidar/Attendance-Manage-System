@@ -940,7 +940,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (MULTI-TEST SELECTION)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (TEST TITLE & OVERALL BEHAVIOUR)
             # ==========================================
             def generate_aims_report_pdf(selected_records):
                 first_rec = selected_records[0]
@@ -1159,7 +1159,7 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table
+                # 3. Marks Breakdown Table with Test Title & Overall Behaviour
                 marks_rows = [
                     [
                         Paragraph("<b>Topic/Section</b>", section_heading),
@@ -1177,8 +1177,9 @@ with tab4:
                     pct = (obt / tot) * 100 if tot > 0 else 0.0
                     total_obt_all += obt
                     total_tot_all += tot
+                    # Show ONLY test title instead of "Test Component (Test Title)"
                     marks_rows.append([
-                        Paragraph(f"Test Component ({t_name})", cell_style),
+                        Paragraph(t_name, cell_style),
                         Paragraph(str(obt), cell_style),
                         Paragraph(str(tot), cell_style),
                         Paragraph(f"{pct:.1f}%", cell_style),
@@ -1189,9 +1190,21 @@ with tab4:
                     if total_tot_all > 0
                     else 0.0
                 )
+
+                # Determine overall behavior based on percentage conditions
+                if overall_pct >= 80.0:
+                    behaviour_text = "Excellent"
+                elif overall_pct >= 45.0:
+                    behaviour_text = "Good"
+                else:
+                    behaviour_text = "Poor"
+
+                # Overall Behaviour row replacing TOTAL MARKS
                 marks_rows.append([
-                    Paragraph("<b>TOTAL MARKS</b>", cell_bold),
-                    Paragraph(f"<b>{total_obt_all}</b>", cell_bold),
+                    Paragraph("<b>Overall Behaviour</b>", cell_bold),
+                    Paragraph(
+                        f"<b>{total_obt_all} ({behaviour_text})</b>", cell_bold
+                    ),
                     Paragraph(f"<b>{total_tot_all}</b>", cell_bold),
                     Paragraph(f"<b>{overall_pct:.1f}%</b>", cell_bold),
                 ])
@@ -1313,7 +1326,6 @@ with tab4:
 
                 selected_tests_indices = []
 
-                # Form for checkboxes
                 with st.form("select_tests_form"):
                     for idx, test in enumerate(student_tests):
                         test_label = (
@@ -1328,7 +1340,6 @@ with tab4:
 
                     generate_btn = st.form_submit_button("Generate Report Data")
 
-                # Handle form submission and download button OUTSIDE the form
                 if generate_btn:
                     if not selected_tests_indices:
                         st.warning(
@@ -1342,7 +1353,6 @@ with tab4:
                         st.session_state["selected_roll"] = selected_roll
                         st.success("Report data generated successfully!")
 
-                # Render download button outside the form if data exists in session state
                 if (
                     "selected_tests_indices" in st.session_state
                     and st.session_state.get("selected_roll") == selected_roll
