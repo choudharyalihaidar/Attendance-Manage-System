@@ -691,19 +691,13 @@ with tab3:
             )
 
             if attendance_pct >= 85.0:
-                att_status_text = "Pass / High Attendance"
-                punctuality_text = "Excellent"
                 remarks_text = (
                     "Punctuality is excellent. Keep it up for consistent"
                     " academic progress."
                 )
             elif attendance_pct >= 60.0:
-                att_status_text = "Satisfactory Attendance"
-                punctuality_text = "Good"
                 remarks_text = "Good attendance, but try to maintain regularity."
             else:
-                att_status_text = "Low Attendance (Warning)"
-                punctuality_text = "Poor"
                 remarks_text = (
                     "Attendance is below required criteria. Immediate"
                     " improvement needed."
@@ -776,16 +770,6 @@ with tab3:
                 fontName="Helvetica-Bold",
                 fontSize=9,
                 leading=12,
-                textColor=colors.HexColor("#111111"),
-            )
-
-            cell_center_bold = ParagraphStyle(
-                "CellCenterBold",
-                parent=styles["Normal"],
-                fontName="Helvetica-Bold",
-                fontSize=9,
-                leading=12,
-                alignment=TA_CENTER,
                 textColor=colors.HexColor("#111111"),
             )
 
@@ -877,7 +861,7 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # 2. Student Info Box (Class added back, Subject on top right, Report Date in center right, Duration at bottom right)
+            # 2. Student Info Box
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
@@ -910,9 +894,9 @@ with tab3:
             story.append(info_table)
             story.append(Spacer(1, 10))
 
-            # Daily Attendance Log Title
+            # Daily Attendance Title (Log word removed)
             log_title = Table(
-                [[Paragraph("DAILY ATTENDANCE LOG", section_heading)]],
+                [[Paragraph("DAILY ATTENDANCE", section_heading)]],
                 colWidths=[540],
             )
             log_title.setStyle(
@@ -994,62 +978,8 @@ with tab3:
                 ])
             )
             story.append(log_table)
-            story.append(Spacer(1, 10))
 
-            # Attendance Summary Title Box
-            summary_title = Table(
-                [[Paragraph("ATTENDANCE SUMMARY", section_heading)]],
-                colWidths=[540],
-            )
-            summary_title.setStyle(
-                TableStyle([
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, -1),
-                        colors.HexColor("#5A1818"),
-                    ),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ])
-            )
-            story.append(summary_title)
-
-            # 3-Column Attendance Summary Data Box
-            summary_data = [
-                [
-                    Paragraph("<b>Percentage</b>", cell_center_bold),
-                    Paragraph("<b>Status</b>", cell_center_bold),
-                    Paragraph("<b>Punctuality</b>", cell_center_bold),
-                ],
-                [
-                    Paragraph(
-                        f"<b>{attendance_pct:.1f}%</b>", cell_center_bold
-                    ),
-                    Paragraph(f"<b>{att_status_text}</b>", cell_center_bold),
-                    Paragraph(f"<b>{punctuality_text}</b>", cell_center_bold),
-                ],
-            ]
-            summary_table = Table(
-                summary_data, colWidths=[180, 180, 180]
-            )
-            summary_table.setStyle(
-                TableStyle([
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor("#EAEAEA"),
-                    ),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ])
-            )
-            story.append(summary_table)
-
-            story.append(Spacer(1, 80))
+            story.append(Spacer(1, 140))
 
             # 4. Teacher's Remarks Section
             remarks_title = Paragraph(
