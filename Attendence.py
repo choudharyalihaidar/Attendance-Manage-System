@@ -877,25 +877,25 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # 2. Student Info Box (Exact layout setup: Left & Right stacking)
+            # 2. Student Info Box (Updated layout as requested: Subject/Range moved down, Total Logged removed)
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
                     Paragraph(f": {name}", cell_style),
-                    Paragraph("<b>Subject / Range</b>", cell_bold),
-                    Paragraph(f": {subject_range_label} ({days_range_label})", cell_style),
-                ],
-                [
-                    Paragraph("<b>Roll No.</b>", cell_bold),
-                    Paragraph(f": {roll_no}", cell_style),
                     Paragraph("<b>Report Date</b>", cell_bold),
                     Paragraph(f": {current_printing_date}", cell_style),
                 ],
                 [
+                    Paragraph("<b>Roll No.</b>", cell_bold),
+                    Paragraph(f": {roll_no}", cell_style),
+                    Paragraph("<b>Subject / Range</b>", cell_bold),
+                    Paragraph(f": {subject_range_label}", cell_style),
+                ],
+                [
                     Paragraph("<b>Class/Batch</b>", cell_bold),
                     Paragraph(f": {class_name}", cell_style),
-                    Paragraph("<b>Total Logged</b>", cell_bold),
-                    Paragraph(f": {total_days} Days", cell_style),
+                    Paragraph("<b>Duration</b>", cell_bold),
+                    Paragraph(f": {days_range_label}", cell_style),
                 ],
             ]
             info_table = Table(info_data, colWidths=[90, 180, 90, 180])
