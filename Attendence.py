@@ -877,7 +877,7 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # 2. Student Info Box (Updated layout as requested: Subject/Range moved down, Total Logged removed)
+            # 2. Student Info Box ('Range' removed from Subject label)
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
@@ -888,7 +888,7 @@ with tab3:
                 [
                     Paragraph("<b>Roll No.</b>", cell_bold),
                     Paragraph(f": {roll_no}", cell_style),
-                    Paragraph("<b>Subject / Range</b>", cell_bold),
+                    Paragraph("<b>Subject</b>", cell_bold),
                     Paragraph(f": {subject_range_label}", cell_style),
                 ],
                 [
