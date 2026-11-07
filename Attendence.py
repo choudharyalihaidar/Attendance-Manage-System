@@ -1,5 +1,6 @@
 import base64
 from datetime import date
+from fpdf import FPDF
 import psycopg2
 import streamlit as st
 
@@ -745,7 +746,6 @@ with tab4:
               )
               existing_score = cursor.fetchone()
               default_score = existing_score[0] if existing_score else 0.0
-              # Agar pehle se record mojood hai to checkbox default True hoga
               default_include = True if existing_score else True
 
               col_inc, col_s1, col_s2 = st.columns([1, 2, 2])
@@ -775,7 +775,6 @@ with tab4:
               for roll_no, obtained in test_scores.items():
                 is_included = test_includes.get(roll_no, True)
 
-                # Pehle check karein ke record database me mojood hai ya nahi
                 cursor.execute(
                     "SELECT * FROM test_marks WHERE roll_no = %s AND class_name ="
                     " %s AND subject = %s AND test_name = %s AND date = %s",
@@ -784,7 +783,6 @@ with tab4:
                 record = cursor.fetchone()
 
                 if not is_included:
-                  # Agar user ne checkbox hata diya hai, aur database me record tha, to use delete kar dein
                   if record:
                     cursor.execute(
                         "DELETE FROM test_marks WHERE roll_no = %s AND"
@@ -799,7 +797,6 @@ with tab4:
                         ),
                     )
                 else:
-                  # Agar checkbox ticked hai to insert ya update karein
                   if record:
                     cursor.execute(
                         "UPDATE test_marks SET obtained_marks = %s, total_marks ="
@@ -883,5 +880,98 @@ with tab4:
           for r in test_records
       ]
       st.dataframe(test_report_table, use_container_width=True)
+
+      # --- PDF GENERATION & DOWNLOAD FEATURE ---
+      class PDF(FPDF):
+
+        def header(self):
+          self.set_font("Arial", "B", 15)
+          self.cell(
+              0,
+              10,
+              "AIMS SCIENCE ACADEMY - TEST REPORT",
+              0,
+              1,
+              "C",
+          )
+          self.set_font("Arial", "I", 10)
+          self.cell(
+              0,
+              6,
+              "Illuminating Minds, Shaping Futures",
+              0,
+              1,
+              "C",
+          )
+          self.ln(5)
+
+        def footer(self):
+          self.set_y(-15)
+          self.set_font("Arial", "I", 8)
+          self.cell(
+              0,
+              10,
+              f"Page {self.page_no()}",
+              0,
+              0,
+              "C",
+          )
+
+      def generate_pdf(records):
+        pdf = PDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "", 10)
+
+        # Table Header
+        pdf.set_fill_color(107, 20, 38)  # Academy theme color
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Arial", "B", 9)
+
+        headers = [
+            "Student Name",
+            "Roll No",
+            "Class",
+            "Subject",
+            "Test",
+            "Obt",
+            "Tot",
+            "Date",
+        ]
+        col_widths = [35, 20, 18, 25, 30, 15, 15, 22]
+
+        for i, h in enumerate(headers):
+          pdf.cell(col_widths[i], 8, h, 1, 0, "C", True)
+        pdf.ln()
+
+        # Table Data
+        pdf.set_font("Arial", "", 8)
+        pdf.set_text_color(0, 0, 0)
+        fill = False
+        for r in records:
+          pdf.set_fill_color(240, 240, 240) if fill else pdf.set_fill_color(
+              255, 255, 255
+          )
+          pdf.cell(col_widths[0], 7, str(r[0]), 1, 0, "L", True)
+          pdf.cell(col_widths[1], 7, str(r[1]), 1, 0, "C", True)
+          pdf.cell(col_widths[2], 7, str(r[2]), 1, 0, "C", True)
+          pdf.cell(col_widths[3], 7, str(r[3]), 1, 0, "L", True)
+          pdf.cell(col_widths[4], 7, str(r[4]), 1, 0, "L", True)
+          pdf.cell(col_widths[5], 7, str(r[5]), 1, 0, "C", True)
+          pdf.cell(col_widths[6], 7, str(r[6]), 1, 0, "C", True)
+          pdf.cell(col_widths[7], 7, str(r[7]), 1, 0, "C", True)
+          pdf.ln()
+          fill = not fill
+
+        return pdf.output(dest="S").encode("latin1")
+
+      pdf_bytes = generate_pdf(test_records)
+      st.download_button(
+          label="📥 Download Test Report as PDF",
+          data=pdf_bytes,
+          file_name=(
+              f"AIMS_Test_Report_{filter_test_roll if filter_test_roll else 'All'}.pdf"
+          ),
+          mime="application/pdf",
+      )
     else:
       st.info("No test records found.")
