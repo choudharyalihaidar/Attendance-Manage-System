@@ -940,29 +940,13 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (OBTAINED LEFT, TOTAL RIGHT)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (UPDATED BREAKDOWN TABLE & NO SUMMARY)
             # ==========================================
             def generate_aims_report_pdf(record):
                 name, roll_no, class_name, subject, test_name, obt, tot, test_date = (
                     record
                 )
                 percentage = (obt / tot) * 100 if tot > 0 else 0.0
-
-                if percentage >= 85:
-                    grade = "A"
-                    status = "PASSED / Excellent"
-                elif percentage >= 70:
-                    grade = "B"
-                    status = "PASSED / Very Good"
-                elif percentage >= 60:
-                    grade = "C"
-                    status = "PASSED / Good"
-                elif percentage >= 50:
-                    grade = "D"
-                    status = "PASSED / Satisfactory"
-                else:
-                    grade = "F"
-                    status = "NEEDS IMPROVEMENT"
 
                 current_printing_date = str(date.today())
 
@@ -1178,25 +1162,29 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table (Marks Obtained on Left, Total Marks on Right)
+                # 3. Marks Breakdown Table (4 Columns: Topic, Marks Obtained, Total Marks, Percentage)
+                # Total width = 210 + 110 + 110 + 110 = 540
                 marks_data = [
                     [
                         Paragraph("<b>Topic/Section</b>", section_heading),
                         Paragraph("<b>Marks Obtained</b>", section_heading),
                         Paragraph("<b>Total Marks</b>", section_heading),
+                        Paragraph("<b>Percentage</b>", section_heading),
                     ],
                     [
                         Paragraph(f"Test Component ({test_name})", cell_style),
                         Paragraph(str(obt), cell_style),
                         Paragraph(str(tot), cell_style),
+                        Paragraph(f"{percentage:.1f}%", cell_style),
                     ],
                     [
                         Paragraph("<b>TOTAL MARKS</b>", cell_bold),
                         Paragraph(f"<b>{obt}</b>", cell_bold),
                         Paragraph(f"<b>{tot}</b>", cell_bold),
+                        Paragraph(f"<b>{percentage:.1f}%</b>", cell_bold),
                     ],
                 ]
-                marks_table = Table(marks_data, colWidths=[300, 120, 120])
+                marks_table = Table(marks_data, colWidths=[210, 110, 110, 110])
                 marks_table.setStyle(
                     TableStyle([
                         (
@@ -1219,62 +1207,9 @@ with tab4:
                     ])
                 )
                 story.append(marks_table)
-                story.append(Spacer(1, 10))
+                story.append(Spacer(1, 15))
 
-                # Result Summary Title
-                summary_title = Table(
-                    [[Paragraph("RESULT SUMMARY", section_heading)]],
-                    colWidths=[540],
-                )
-                summary_title.setStyle(
-                    TableStyle([
-                        (
-                            "BACKGROUND",
-                            (0, 0),
-                            (-1, -1),
-                            colors.HexColor("#5A1818"),
-                        ),
-                        ("TOPPADDING", (0, 0), (-1, -1), 5),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ])
-                )
-                story.append(summary_title)
-
-                # 4. Result Summary Table
-                summary_data = [
-                    [
-                        Paragraph("<b>Percentage</b>", cell_bold),
-                        Paragraph("<b>Grade</b>", cell_bold),
-                        Paragraph("<b>Status</b>", cell_bold),
-                    ],
-                    [
-                        Paragraph(f"{percentage:.1f}%", cell_style),
-                        Paragraph(grade, cell_style),
-                        Paragraph(status, cell_bold),
-                    ],
-                ]
-                summary_table = Table(
-                    summary_data, colWidths=[180, 180, 180]
-                )
-                summary_table.setStyle(
-                    TableStyle([
-                        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        (
-                            "BACKGROUND",
-                            (0, 0),
-                            (-1, 0),
-                            colors.HexColor("#E8E8E8"),
-                        ),
-                        ("TOPPADDING", (0, 0), (-1, -1), 5),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ])
-                )
-                story.append(summary_table)
-                story.append(Spacer(1, 12))
-
-                # 5. Teacher's Remarks Section
+                # 4. Teacher's Remarks Section
                 remarks_title = Paragraph(
                     "<b>TEACHER'S REMARKS</b>",
                     ParagraphStyle(
@@ -1309,7 +1244,7 @@ with tab4:
                 story.append(remarks_table)
                 story.append(Spacer(1, 40))
 
-                # 6. Signatures Section
+                # 5. Signatures Section
                 sig_data = [
                     [
                         Paragraph("____________________________", cell_style),
