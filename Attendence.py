@@ -877,23 +877,23 @@ with tab3:
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
-            # 2. Student Info Box (Class/Batch removed as requested)
+            # 2. Student Info Box (Class added back, Subject on top right, Report Date in center right, Duration at bottom right)
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
                     Paragraph(f": {name}", cell_style),
-                    Paragraph("<b>Report Date</b>", cell_bold),
-                    Paragraph(f": {current_printing_date}", cell_style),
-                ],
-                [
-                    Paragraph("<b>Roll No.</b>", cell_bold),
-                    Paragraph(f": {roll_no}", cell_style),
                     Paragraph("<b>Subject</b>", cell_bold),
                     Paragraph(f": {subject_range_label}", cell_style),
                 ],
                 [
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
+                    Paragraph("<b>Roll No.</b>", cell_bold),
+                    Paragraph(f": {roll_no}", cell_style),
+                    Paragraph("<b>Report Date</b>", cell_bold),
+                    Paragraph(f": {current_printing_date}", cell_style),
+                ],
+                [
+                    Paragraph("<b>Class/Batch</b>", cell_bold),
+                    Paragraph(f": {class_name}", cell_style),
                     Paragraph("<b>Duration</b>", cell_bold),
                     Paragraph(f": {days_range_label}", cell_style),
                 ],
@@ -929,7 +929,7 @@ with tab3:
             )
             story.append(log_title)
 
-            # 3. Daily Attendance Table (Month column and "(Class)" removed, adjusted into 3 columns: Date, Subject, Status)
+            # 3. Daily Attendance Table
             log_rows = [
                 [
                     Paragraph("<b>Date</b>", section_heading),
@@ -964,7 +964,7 @@ with tab3:
                     ),
                 ])
 
-            # Summary Totals Row inside Table (3 columns matching widths: 150, 240, 150)
+            # Summary Totals Row inside Table
             log_rows.append([
                 Paragraph(f"<b>Total Days | {total_days}</b>", cell_bold),
                 Paragraph(f"<b>Days Present | {days_present}</b>", cell_bold),
