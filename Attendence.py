@@ -940,7 +940,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (EXACT 3-COLUMN STRUCTURE)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (MERGED LAST ROW)
             # ==========================================
             def generate_aims_report_pdf(selected_records):
                 first_rec = selected_records[0]
@@ -1159,7 +1159,7 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table (Exact requested headers & column layout)
+                # 3. Marks Breakdown Table with Merged Behavior Row
                 marks_rows = [
                     [
                         Paragraph("<b>Test Title</b>", section_heading),
@@ -1173,7 +1173,6 @@ with tab4:
 
                 for r in selected_records:
                     _, _, _, _, t_name, obt, tot, _ = r
-                    pct = (obt / tot) * 100 if tot > 0 else 0.0
                     total_obt_all += obt
                     total_tot_all += tot
                     
@@ -1197,11 +1196,11 @@ with tab4:
                 else:
                     behaviour_text = "Poor"
 
-                # 3 Columns Summary Row matching table width (210 + 165 + 165 = 540)
+                # Last row: Column 0 & 1 merged for "Overall Behaviour", Column 2 for condition result
                 marks_rows.append([
                     Paragraph("<b>Overall Behaviour</b>", cell_bold),
-                    Paragraph(f"<b>{total_obt_all}</b>", cell_bold),
-                    Paragraph(f"<b>{total_tot_all} &nbsp;—&nbsp; {overall_pct:.1f}% ({behaviour_text})</b>", cell_bold),
+                    "",  # Empty placeholder for span
+                    Paragraph(f"<b>{behaviour_text}</b>", cell_bold),
                 ])
 
                 marks_table = Table(marks_rows, colWidths=[210, 165, 165])
@@ -1218,6 +1217,8 @@ with tab4:
                         ("ALIGN", (1, 0), (-1, -1), "CENTER"),
                         ("TOPPADDING", (0, 0), (-1, -1), 5),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                        # Span first two cells of the last row together
+                        ("SPAN", (0, -1), (1, -1)),
                         (
                             "BACKGROUND",
                             (0, -1),
