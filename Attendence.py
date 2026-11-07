@@ -940,7 +940,7 @@ with tab4:
             st.dataframe(test_report_table, use_container_width=True)
 
             # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (3-COLUMN TABLE LAYOUT)
+            # PROFESSIONAL REPORTLAB PDF GENERATOR (EXACT 3-COLUMN STRUCTURE)
             # ==========================================
             def generate_aims_report_pdf(selected_records):
                 first_rec = selected_records[0]
@@ -1159,12 +1159,12 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table (3 Columns Header & 3-Column Summary Row)
+                # 3. Marks Breakdown Table (Exact requested headers & column layout)
                 marks_rows = [
                     [
                         Paragraph("<b>Test Title</b>", section_heading),
-                        Paragraph("<b>Marks Obtained / Total Marks</b>", section_heading),
-                        Paragraph("<b>Overall Percentage & Behaviour</b>", section_heading),
+                        Paragraph("<b>Marks Obtained</b>", section_heading),
+                        Paragraph("<b>Total Marks</b>", section_heading),
                     ]
                 ]
 
@@ -1179,8 +1179,8 @@ with tab4:
                     
                     marks_rows.append([
                         Paragraph(t_name, cell_style),
-                        Paragraph(f"{obt} / {tot}", cell_style),
-                        Paragraph(f"{pct:.1f}%", cell_style),
+                        Paragraph(str(obt), cell_style),
+                        Paragraph(str(tot), cell_style),
                     ])
 
                 overall_pct = (
@@ -1197,11 +1197,11 @@ with tab4:
                 else:
                     behaviour_text = "Poor"
 
-                # Exactly 3 columns for the summary row matching table width (210 + 165 + 165 = 540)
+                # 3 Columns Summary Row matching table width (210 + 165 + 165 = 540)
                 marks_rows.append([
                     Paragraph("<b>Overall Behaviour</b>", cell_bold),
-                    Paragraph(f"<b>{total_obt_all} / {total_tot_all}</b>", cell_bold),
-                    Paragraph(f"<b>{overall_pct:.1f}% ({behaviour_text})</b>", cell_bold),
+                    Paragraph(f"<b>{total_obt_all}</b>", cell_bold),
+                    Paragraph(f"<b>{total_tot_all} &nbsp;—&nbsp; {overall_pct:.1f}% ({behaviour_text})</b>", cell_bold),
                 ])
 
                 marks_table = Table(marks_rows, colWidths=[210, 165, 165])
