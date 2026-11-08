@@ -13,14 +13,19 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 # ==========================================
 # NEON POSTGRESQL CONNECTION CONFIGURATION
 # ==========================================
-DATABASE_URL = "postgresql://neondb_owner:npg_UGwX3Z0ygdho@ep-cold-sound-beiwqd0u-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+DATABASE_URL = "postgresql://neondb_owner:npg_UGwX3Z0ygdho@ep-cold-sound-beiwqd0u-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
 
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+    try:
+        return psycopg2.connect(DATABASE_URL)
+    except psycopg2.OperationalError as e:
+        if "unexpected eof while reading" in str(e):
+            return psycopg2.connect(DATABASE_URL)
+        raise e
 
 
-# Initialize Database
+# Initialize Database (Ensuring phone column exists)
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -30,7 +35,8 @@ def init_db():
             name TEXT NOT NULL,
             roll_no TEXT UNIQUE NOT NULL,
             class_name TEXT NOT NULL,
-            subjects TEXT NOT NULL
+            subjects TEXT NOT NULL,
+            phone TEXT
         )
     """)
     cursor.execute("""
@@ -65,7 +71,7 @@ def init_db():
 # Page Configuration
 st.set_page_config(
     page_title="AIMS Science Academy - Attendance & Test System",
-    page_icon="🎓",
+    page_icon="",
     layout="wide",
 )
 
@@ -164,13 +170,12 @@ if "logged_in" not in st.session_state:
 if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([1.2, 2, 1.2])
 
-    # --- Left Column (Academy name and motto) ---
     with col1:
         st.markdown(
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 30px 0;">🎓</div>
+                <div style="font-size: 50px; margin: 30px 0;"></div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
@@ -179,7 +184,6 @@ if not st.session_state.logged_in:
             unsafe_allow_html=True,
         )
 
-    # --- Middle Column (Login form) ---
     with col2:
         st.markdown(
             "<h2 style='text-align: center; color: #FFD700;'>Welcome to</h2>",
@@ -230,13 +234,11 @@ if not st.session_state.logged_in:
                     else:
                         st.error("Incorrect Teacher username or password!")
 
-    # --- Right Column (Monogram, Mission and Vision) ---
     with col3:
         st.markdown(
             f"""
             <div class="side-panel-right">
                 <div style="text-align: center;">
-                    <!-- Academy monogram image inside the perfect circle -->
                     <div class="monogram-circle">
                         <img src="{img_src}" alt="Monogram">
                     </div>
@@ -245,8 +247,8 @@ if not st.session_state.logged_in:
                 </div>
                 <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
                 <div style="font-size: 13px; color: #333;">
-                    <p><b>🌍 Mission:</b><br>A Community of Scholars</p>
-                    <p><b>💡 Vision:</b><br>Providing exceptional, accessible education and fostering growth.</p>
+                    <p><b> Mission:</b><br>A Community of Scholars</p>
+                    <p><b> Vision:</b><br>Providing exceptional, accessible education and fostering growth.</p>
                 </div>
             </div>
             """,
@@ -258,27 +260,27 @@ if not st.session_state.logged_in:
 # MAIN APPLICATION (AFTER LOGIN)
 # ==========================================
 role_display = st.session_state.role.upper() if st.session_state.role else ""
-st.sidebar.markdown(f"👤 Logged in as: **{role_display}**")
+st.sidebar.markdown(f" Logged in as: **{role_display}**")
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.session_state.role = None
     st.rerun()
 
-st.title("🎓 AIMS Science Academy - Management System")
+st.title(" AIMS Science Academy - Management System")
 
 # Role-based Navigation Tabs
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "👥 Manage Students",
-            "📝 Mark Attendance",
-            "📊 Attendance Reports",
-            "📈 Test Reports",
+            " Manage Students",
+            " Mark Attendance",
+            " Attendance Reports",
+            " Test Reports",
         ]
     )
 else:
     tab2, tab3, tab4 = st.tabs(
-        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+        [" Mark Attendance", " Attendance Reports", " Test Reports"]
     )
     tab1 = None
 
@@ -298,6 +300,7 @@ if tab1 is not None:
                 subjects = st.text_input(
                     "Subjects (comma separated, e.g. Math, Physics, Chemistry)"
                 )
+                phone = st.text_input("Home Phone Number (Admin Only)")
 
                 submit_student = st.form_submit_button("Add Student")
 
@@ -308,19 +311,20 @@ if tab1 is not None:
                         or not class_name.strip()
                         or not subjects.strip()
                     ):
-                        st.error("Please fill in all fields.")
+                        st.error("Please fill in all mandatory fields.")
                     else:
                         try:
                             conn = get_db_connection()
                             cursor = conn.cursor()
                             cursor.execute(
-                                "INSERT INTO students (name, roll_no, class_name, subjects)"
-                                " VALUES (%s, %s, %s, %s)",
+                                "INSERT INTO students (name, roll_no, class_name, subjects, phone)"
+                                " VALUES (%s, %s, %s, %s, %s)",
                                 (
                                     name.strip(),
                                     roll_no.strip(),
                                     class_name.strip(),
                                     subjects.strip(),
+                                    phone.strip(),
                                 ),
                             )
                             conn.commit()
@@ -346,12 +350,12 @@ if tab1 is not None:
             )
 
         st.divider()
-        st.subheader("Enrolled Students")
+        st.subheader("Enrolled Students (Admin View)")
 
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, name, roll_no, class_name, subjects FROM students"
+            "SELECT id, name, roll_no, class_name, subjects, phone FROM students"
         )
         students_data = cursor.fetchall()
         cursor.close()
@@ -365,6 +369,7 @@ if tab1 is not None:
                     "Roll No": r[2],
                     "Class": r[3],
                     "Subjects": r[4],
+                    "Home Phone": r[5] if r[5] else "N/A",
                 }
                 for r in students_data
             ]
@@ -372,7 +377,7 @@ if tab1 is not None:
 
             # --- EDIT STUDENT SECTION ---
             st.divider()
-            st.subheader("✏️ Edit Student Details")
+            st.subheader(" Edit Student Details")
             edit_roll_no = st.selectbox(
                 "Select Roll No to Edit",
                 options=[r[2] for r in students_data],
@@ -382,7 +387,7 @@ if tab1 is not None:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT name, class_name, subjects FROM students WHERE roll_no = %s",
+                "SELECT name, class_name, subjects, phone FROM students WHERE roll_no = %s",
                 (edit_roll_no,),
             )
             curr_student = cursor.fetchone()
@@ -390,7 +395,7 @@ if tab1 is not None:
             conn.close()
 
             if curr_student:
-                curr_name, curr_class, curr_subjects = curr_student
+                curr_name, curr_class, curr_subjects, curr_phone = curr_student
                 with st.form("edit_student_form"):
                     new_name = st.text_input(
                         "Update Student Name", value=curr_name
@@ -401,6 +406,9 @@ if tab1 is not None:
                     new_subjects = st.text_input(
                         "Update Subjects (comma separated)", value=curr_subjects
                     )
+                    new_phone = st.text_input(
+                        "Update Home Phone Number", value=curr_phone if curr_phone else ""
+                    )
 
                     update_btn = st.form_submit_button("Save Changes")
                     if update_btn:
@@ -409,17 +417,18 @@ if tab1 is not None:
                             or not new_class.strip()
                             or not new_subjects.strip()
                         ):
-                            st.error("Please fill in all fields.")
+                            st.error("Please fill in all mandatory fields.")
                         else:
                             conn = get_db_connection()
                             cursor = conn.cursor()
                             cursor.execute(
-                                "UPDATE students SET name = %s, class_name = %s, subjects = %s"
+                                "UPDATE students SET name = %s, class_name = %s, subjects = %s, phone = %s"
                                 " WHERE roll_no = %s",
                                 (
                                     new_name.strip(),
                                     new_class.strip(),
                                     new_subjects.strip(),
+                                    new_phone.strip(),
                                     edit_roll_no,
                                 ),
                             )
@@ -487,7 +496,6 @@ if tab1 is not None:
 with tab2:
     st.subheader("Mark Daily Attendance")
     
-    # Date Picker added at the very top of Mark Attendance section
     selected_date = st.date_input("Select Attendance Date", value=date.today(), key="att_date_picker")
     today_str = str(selected_date)
     st.info(f"Active Attendance Date: **{today_str}**")
@@ -676,15 +684,11 @@ with tab3:
         ]
         st.dataframe(report_table, use_container_width=True)
 
-        # ==========================================
-        # PROFESSIONAL ATTENDANCE PDF GENERATOR (MATRIX FORMAT)
-        # ==========================================
         def generate_aims_attendance_pdf(selected_records, selected_pdf_subjects, days_range_label):
             first_rec = selected_records[0]
             name, roll_no, class_name, _, _, _ = first_rec
             current_printing_date = str(date.today())
 
-            # Group records by Date
             date_map = {}
             all_dates_set = set()
             for r in selected_records:
@@ -694,7 +698,6 @@ with tab3:
                     date_map[d_str] = {}
                 date_map[d_str][sub_name] = status_val
 
-            # Oldest date first, newest date last (Ascending order)
             sorted_dates = sorted(list(all_dates_set), reverse=False)
 
             total_days = len(sorted_dates)
@@ -721,7 +724,6 @@ with tab3:
                     else:
                         subject_statuses.append("-")
 
-                # Condition: half or more subjects present
                 threshold = (len(selected_pdf_subjects) + 1) // 2 if selected_pdf_subjects else 1
                 if selected_pdf_subjects and present_count >= threshold:
                     overall_status = "P"
@@ -837,7 +839,6 @@ with tab3:
                 textColor=colors.HexColor("#111111"),
             )
 
-            # 1. Academy Header Section
             try:
                 logo_img = Image("monomono.png", width=55, height=55)
             except Exception:
@@ -878,7 +879,6 @@ with tab3:
             story.append(header_table)
             story.append(Spacer(1, 10))
 
-            # Report Title Bar
             report_title = Table(
                 [[Paragraph("STUDENT ATTENDANCE REPORT", report_title_style)]],
                 colWidths=[540],
@@ -893,7 +893,6 @@ with tab3:
             story.append(report_title)
             story.append(Spacer(1, 5))
 
-            # Principal Subtitle
             principal_p = Paragraph(
                 "<b>Principal: Choudhary Asim Walyat</b>",
                 ParagraphStyle(
@@ -909,7 +908,6 @@ with tab3:
 
             subj_label_str = ", ".join(selected_pdf_subjects) if selected_pdf_subjects else "None"
 
-            # 2. Student Info Box
             info_data = [
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
@@ -942,7 +940,6 @@ with tab3:
             story.append(info_table)
             story.append(Spacer(1, 10))
 
-            # Daily Attendance Title
             log_title = Table(
                 [[Paragraph("DAILY ATTENDANCE", report_title_style)]],
                 colWidths=[540],
@@ -956,7 +953,6 @@ with tab3:
             )
             story.append(log_title)
 
-            # 3. Dynamic Matrix Attendance Table Construction
             num_subs = len(selected_pdf_subjects)
             if num_subs > 0:
                 sub_col_width = 330.0 / num_subs
@@ -987,9 +983,7 @@ with tab3:
                 r_cells.append(Paragraph(f"<b>{row['overall']}</b>", cell_center_bold))
                 matrix_rows.append(r_cells)
 
-            # Last Row: Exactly 3 equal parts spanning across all columns
             total_cols = len(col_widths)
-            
             span_size = total_cols // 3
             rem = total_cols % 3
 
@@ -1027,9 +1021,8 @@ with tab3:
             matrix_table.setStyle(TableStyle(table_style_commands))
 
             story.append(matrix_table)
-            story.append(Spacer(1, 100))
+            story.append(Spacer(1, 40))
 
-            # 4. Teacher's Remarks Section
             remarks_title = Paragraph(
                 "<b>TEACHER'S REMARKS</b>",
                 ParagraphStyle(
@@ -1061,24 +1054,32 @@ with tab3:
                 ])
             )
             story.append(remarks_table)
-            story.append(Spacer(1, 25))
+            story.append(Spacer(1, 20))
 
-            # 5. Signatures Section
+            # 5. Signatures Section (Principal Signature centered towards the middle/left gap)
+            try:
+                sign_img = Image("azim_sign.png", width=110, height=45)
+            except Exception:
+                sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
+
             sig_data = [
                 [
                     Paragraph("____________________________", cell_style),
-                    Paragraph("____________________________", cell_style),
+                    sign_img,
                 ],
                 [
                     Paragraph("<b>Parent's Signature</b>", cell_style),
                     Paragraph("<b>Principal / Teacher's Signature</b>", cell_style),
                 ],
             ]
+            # Changed alignment/padding in TableStyle to center-left align the signature cell slightly towards the middle
             sig_table = Table(sig_data, colWidths=[270, 270])
             sig_table.setStyle(
                 TableStyle([
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                    ("ALIGN", (1, 0), (1, -1), "LEFT"),  # Signature cell shifted inward/left towards middle
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (1, 0), (1, -1), 40), # Added left padding to move signature closer to the center space
                     ("TOPPADDING", (0, 0), (-1, -1), 2),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                 ])
@@ -1089,11 +1090,8 @@ with tab3:
             with open(filename, "rb") as f:
                 return f.read()
 
-        # ==========================================
-        # ATTENDANCE PDF DOWNLOAD WIDGET (WITH SUBJECT MULTISELECT)
-        # ==========================================
         st.divider()
-        st.subheader("📥 Download Student Attendance PDF Report")
+        st.subheader(" Download Student Attendance PDF Report")
 
         student_dict = {}
         student_subjects_dict = {}
@@ -1146,7 +1144,6 @@ with tab3:
                 )
             ]
 
-            # Filter records based on selected days range
             if days_option == "Last 7 Days":
                 cutoff_date = date.today() - timedelta(days=7)
                 student_att_records = [
@@ -1178,7 +1175,7 @@ with tab3:
                     student_att_records, selected_pdf_subjects, days_option
                 )
                 st.download_button(
-                    label="💾 Click here to download Attendance PDF",
+                    label=" Click here to download Attendance PDF",
                     data=pdf_att_data,
                     file_name=f"AIMS_Attendance_Report_{selected_att_roll}.pdf",
                     mime="application/pdf",
@@ -1283,7 +1280,7 @@ with tab4:
                         f" ({test_name})"
                     )
                     st.info(
-                        "💡 Uncheck 'Include' for any student who was absent or whose"
+                        " Uncheck 'Include' for any student who was absent or whose"
                         " marks shouldn't be added."
                     )
 
@@ -1452,9 +1449,6 @@ with tab4:
             ]
             st.dataframe(test_report_table, use_container_width=True)
 
-            # ==========================================
-            # PROFESSIONAL REPORTLAB PDF GENERATOR (TEST REPORTS)
-            # ==========================================
             def generate_aims_report_pdf(selected_records):
                 first_rec = selected_records[0]
                 name, roll_no, class_name, subject, _, _, _, _ = first_rec
@@ -1540,7 +1534,6 @@ with tab4:
                     textColor=colors.HexColor("#111111"),
                 )
 
-                # 1. Academy Header Section
                 try:
                     logo_img = Image("monomono.png", width=55, height=55)
                 except Exception:
@@ -1594,7 +1587,6 @@ with tab4:
                 story.append(header_table)
                 story.append(Spacer(1, 10))
 
-                # Report Title Bar
                 report_title = Table(
                     [[Paragraph("STUDENT TEST PERFORMANCE REPORT", report_title_style)]],
                     colWidths=[540],
@@ -1614,7 +1606,6 @@ with tab4:
                 story.append(report_title)
                 story.append(Spacer(1, 5))
 
-                # Principal Subtitle
                 principal_p = Paragraph(
                     "<b>Principal: Choudhary Asim Walyat</b>",
                     ParagraphStyle(
@@ -1628,7 +1619,6 @@ with tab4:
                 story.append(principal_p)
                 story.append(Spacer(1, 8))
 
-                # 2. Student Info Box
                 info_data = [
                     [
                         Paragraph("<b>Student Name</b>", cell_bold),
@@ -1663,7 +1653,6 @@ with tab4:
                 story.append(info_table)
                 story.append(Spacer(1, 10))
 
-                # Detailed Marks Breakdown Title
                 breakdown_title = Table(
                     [[Paragraph("DETAILED MARKS BREAKDOWN", section_heading)]],
                     colWidths=[540],
@@ -1682,7 +1671,6 @@ with tab4:
                 )
                 story.append(breakdown_title)
 
-                # 3. Marks Breakdown Table with Equal 2-Column Last Row Layout
                 marks_rows = [
                     [
                         Paragraph("<b>Test Title</b>", section_heading),
@@ -1711,7 +1699,6 @@ with tab4:
                     else 0.0
                 )
 
-                # Determine overall behavior based on percentage conditions
                 if overall_pct >= 80.0:
                     behaviour_text = "Excellent"
                 elif overall_pct >= 45.0:
@@ -1750,9 +1737,8 @@ with tab4:
                 )
                 story.append(marks_table)
 
-                story.append(Spacer(1, 200))
+                story.append(Spacer(1, 120))
 
-                # 4. Teacher's Remarks Section
                 remarks_title = Paragraph(
                     "<b>TEACHER'S REMARKS</b>",
                     ParagraphStyle(
@@ -1785,13 +1771,18 @@ with tab4:
                     ])
                 )
                 story.append(remarks_table)
-                story.append(Spacer(1, 25))
+                story.append(Spacer(1, 20))
 
-                # 5. Signatures Section
+                # Signatures Section (Principal Signature centered towards the middle/left gap)
+                try:
+                    sign_img = Image("azim_sign.png", width=110, height=45)
+                except Exception:
+                    sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
+
                 sig_data = [
                     [
                         Paragraph("____________________________", cell_style),
-                        Paragraph("____________________________", cell_style),
+                        sign_img,
                     ],
                     [
                         Paragraph("<b>Parent's Signature</b>", cell_style),
@@ -1803,8 +1794,10 @@ with tab4:
                 sig_table = Table(sig_data, colWidths=[270, 270])
                 sig_table.setStyle(
                     TableStyle([
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                        ("ALIGN", (1, 0), (1, -1), "LEFT"),
                         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("LEFTPADDING", (1, 0), (1, -1), 40),
                         ("TOPPADDING", (0, 0), (-1, -1), 2),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                     ])
@@ -1817,7 +1810,7 @@ with tab4:
 
             st.write("---")
             st.subheader(
-                "📥 Download Student Test Performance Report (Multi-Test Selection)"
+                " Download Student Test Performance Report (Multi-Test Selection)"
             )
 
             student_dict = {}
@@ -1880,7 +1873,7 @@ with tab4:
                     ]
                     pdf_data = generate_aims_report_pdf(chosen_records)
                     st.download_button(
-                        label="💾 Click here to download PDF",
+                        label=" Click here to download PDF",
                         data=pdf_data,
                         file_name=f"AIMS_Report_{selected_roll}.pdf",
                         mime="application/pdf",
