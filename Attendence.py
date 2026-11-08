@@ -71,7 +71,7 @@ def init_db():
 # Page Configuration
 st.set_page_config(
     page_title="AIMS Science Academy - Attendance & Test System",
-    page_icon="",
+    page_icon="monomono.png",
     layout="wide",
 )
 
