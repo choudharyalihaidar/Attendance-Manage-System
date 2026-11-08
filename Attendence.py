@@ -175,7 +175,7 @@ if not st.session_state.logged_in:
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 30px 0;"></div>
+                <div style="font-size: 50px; margin: 20px 0;">🎓</div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
@@ -1072,14 +1072,13 @@ with tab3:
                     Paragraph("<b>Principal / Teacher's Signature</b>", cell_style),
                 ],
             ]
-            # Changed alignment/padding in TableStyle to center-left align the signature cell slightly towards the middle
             sig_table = Table(sig_data, colWidths=[270, 270])
             sig_table.setStyle(
                 TableStyle([
                     ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                    ("ALIGN", (1, 0), (1, -1), "LEFT"),  # Signature cell shifted inward/left towards middle
+                    ("ALIGN", (1, 0), (1, -1), "LEFT"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("LEFTPADDING", (1, 0), (1, -1), 40), # Added left padding to move signature closer to the center space
+                    ("LEFTPADDING", (1, 0), (1, -1), 40),
                     ("TOPPADDING", (0, 0), (-1, -1), 2),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                 ])
