@@ -79,8 +79,7 @@ st.set_page_config(
 init_db()
 
 
-# Function to safely convert local monogram image to base64
-@st.cache_data
+# Function to safely convert local monogram image to base64 (Cache removed so new image loads instantly)
 def get_image_base64(path):
     try:
         with open(path, "rb") as image_file:
