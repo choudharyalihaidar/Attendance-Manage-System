@@ -353,7 +353,6 @@ if tab1 is not None:
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Sorted by roll_no ASC so records always display in clean roll number order
         cursor.execute(
             "SELECT id, name, roll_no, class_name, subjects, phone FROM students ORDER BY roll_no ASC"
         )
@@ -548,7 +547,7 @@ with tab2:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT roll_no, name, subjects FROM students WHERE class_name = %s",
+                "SELECT roll_no, name, subjects FROM students WHERE class_name = %s ORDER BY roll_no ASC",
                 (selected_class,),
             )
             students = cursor.fetchall()
@@ -654,7 +653,7 @@ with tab3:
             FROM attendance 
             JOIN students ON students.roll_no = attendance.roll_no 
             WHERE attendance.roll_no = %s
-            ORDER BY attendance.date ASC
+            ORDER BY attendance.date DESC, students.roll_no ASC
         """,
             (filter_roll,),
         )
@@ -663,7 +662,7 @@ with tab3:
             SELECT students.name, students.roll_no, attendance.class_name, attendance.subject, attendance.date, attendance.status 
             FROM attendance 
             JOIN students ON students.roll_no = attendance.roll_no
-            ORDER BY attendance.date ASC
+            ORDER BY attendance.date DESC, students.roll_no ASC
         """)
 
     records = cursor.fetchall()
@@ -912,7 +911,7 @@ with tab3:
                 [
                     Paragraph("<b>Student Name</b>", cell_bold),
                     Paragraph(f": {name}", cell_style),
-                    Paragraph("<b>Subject</b>", cell_bold),
+                    Paragraph("<b>Subject(s)</b>", cell_bold),
                     Paragraph(f": {subj_label_str}", cell_style),
                 ],
                 [
@@ -1258,7 +1257,7 @@ with tab4:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT roll_no, name, subjects FROM students WHERE class_name = %s",
+                    "SELECT roll_no, name, subjects FROM students WHERE class_name = %s ORDER BY roll_no ASC",
                     (test_class,),
                 )
                 students = cursor.fetchall()
@@ -1415,6 +1414,7 @@ with tab4:
                 FROM test_marks 
                 JOIN students ON students.roll_no = test_marks.roll_no 
                 WHERE test_marks.roll_no = %s
+                ORDER BY students.roll_no ASC, test_marks.date DESC
             """,
                 (filter_test_roll,),
             )
@@ -1423,6 +1423,7 @@ with tab4:
                 SELECT students.name, students.roll_no, test_marks.class_name, test_marks.subject, test_marks.test_name, test_marks.obtained_marks, test_marks.total_marks, test_marks.date 
                 FROM test_marks 
                 JOIN students ON students.roll_no = test_marks.roll_no
+                ORDER BY students.roll_no ASC, test_marks.date DESC
             """)
 
         test_records = cursor.fetchall()
@@ -1453,7 +1454,10 @@ with tab4:
                 name, roll_no, class_name, subject, _, _, _, _ = first_rec
                 current_printing_date = str(date.today())
 
-                filename = f"AIMS_Report_{roll_no}_{subject.replace(' ', '_')}.pdf"
+                all_test_subjects = sorted(list(set([r[3] for r in selected_records if r[3]])))
+                subj_label_str = ", ".join(all_test_subjects) if all_test_subjects else subject
+
+                filename = f"AIMS_Report_{roll_no}.pdf"
                 doc = SimpleDocTemplate(
                     filename,
                     pagesize=letter,
@@ -1622,8 +1626,8 @@ with tab4:
                     [
                         Paragraph("<b>Student Name</b>", cell_bold),
                         Paragraph(f": {name}", cell_style),
-                        Paragraph("<b>Subject</b>", cell_bold),
-                        Paragraph(f": {subject}", cell_style),
+                        Paragraph("<b>Subject(s)</b>", cell_bold),
+                        Paragraph(f": {subj_label_str}", cell_style),
                     ],
                     [
                         Paragraph("<b>Roll No.</b>", cell_bold),
@@ -1673,6 +1677,8 @@ with tab4:
                 marks_rows = [
                     [
                         Paragraph("<b>Test Title</b>", section_heading),
+                        Paragraph("<b>Date</b>", section_heading),
+                        Paragraph("<b>Subject</b>", section_heading),
                         Paragraph("<b>Marks Obtained</b>", section_heading),
                         Paragraph("<b>Total Marks</b>", section_heading),
                     ]
@@ -1682,12 +1688,14 @@ with tab4:
                 total_tot_all = 0.0
 
                 for r in selected_records:
-                    _, _, _, _, t_name, obt, tot, _ = r
+                    _, _, _, t_sub, t_name, obt, tot, t_date = r
                     total_obt_all += obt
                     total_tot_all += tot
                     
                     marks_rows.append([
                         Paragraph(t_name, cell_style),
+                        Paragraph(str(t_date), cell_style),
+                        Paragraph(str(t_sub), cell_style),
                         Paragraph(str(obt), cell_style),
                         Paragraph(str(tot), cell_style),
                     ])
@@ -1707,11 +1715,13 @@ with tab4:
 
                 marks_rows.append([
                     Paragraph("<b>Overall Behaviour</b>", cell_bold),
+                    "",
+                    "",
                     Paragraph(f"<b>{behaviour_text}</b>", cell_center_bold),
                     "",
                 ])
 
-                marks_table = Table(marks_rows, colWidths=[270, 135, 135])
+                marks_table = Table(marks_rows, colWidths=[150, 90, 100, 100, 100])
                 marks_table.setStyle(
                     TableStyle([
                         (
@@ -1722,10 +1732,11 @@ with tab4:
                         ),
                         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
                         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                        ("ALIGN", (3, 0), (-1, -1), "CENTER"),
                         ("TOPPADDING", (0, 0), (-1, -1), 5),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                        ("SPAN", (1, -1), (2, -1)),
+                        ("SPAN", (0, -1), (2, -1)),
+                        ("SPAN", (3, -1), (4, -1)),
                         (
                             "BACKGROUND",
                             (0, -1),
@@ -1821,61 +1832,87 @@ with tab4:
                 "Select Student Roll Number",
                 options=list(student_dict.keys()),
                 format_func=lambda roll: f"{student_dict[roll]} (Roll: {roll})",
+                key="test_pdf_roll_select",
             )
 
             if selected_roll:
-                student_tests = [
-                    r for r in test_records if r[1] == selected_roll
-                ]
-                st.info(
-                    f"This student has a total of **{len(student_tests)}**"
-                    " test(s). Which tests would you like to include in the"
-                    " PDF file?"
+                # Fetch student's enrolled subjects from database
+                conn_sub = get_db_connection()
+                cur_sub = conn_sub.cursor()
+                cur_sub.execute("SELECT subjects FROM students WHERE roll_no = %s", (selected_roll,))
+                sub_row = cur_sub.fetchone()
+                cur_sub.close()
+                conn_sub.close()
+
+                student_enrolled_subjects = []
+                if sub_row and sub_row[0]:
+                    student_enrolled_subjects = [s.strip() for s in sub_row[0].split(",") if s.strip()]
+
+                # Subject selection box right below roll number selection
+                selected_test_subjects = st.multiselect(
+                    "Select Subject(s) for Test Report",
+                    options=student_enrolled_subjects,
+                    default=student_enrolled_subjects,
+                    key="test_pdf_subject_multiselect"
                 )
 
-                selected_tests_indices = []
+                # Filter student tests based on selected roll no and selected subjects
+                student_tests = [
+                    r for r in test_records 
+                    if r[1] == selected_roll and (not selected_test_subjects or r[3] in selected_test_subjects)
+                ]
 
-                with st.form("select_tests_form"):
-                    for idx, test in enumerate(student_tests):
-                        test_label = (
-                            f"Subject: **{test[3]}** | Test: **{test[4]}** |"
-                            f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
-                        )
-                        is_checked = st.checkbox(
-                            test_label, value=True, key=f"test_chk_{idx}"
-                        )
-                        if is_checked:
-                            selected_tests_indices.append(idx)
-
-                    generate_btn = st.form_submit_button("Generate Report Data")
-
-                if generate_btn:
-                    if not selected_tests_indices:
-                        st.warning(
-                            "Please select at least one test to generate the"
-                            " PDF report!"
-                        )
-                    else:
-                        st.session_state["selected_tests_indices"] = (
-                            selected_tests_indices
-                        )
-                        st.session_state["selected_roll"] = selected_roll
-                        st.success("Report data generated successfully!")
-
-                if (
-                    "selected_tests_indices" in st.session_state
-                    and st.session_state.get("selected_roll") == selected_roll
-                ):
-                    chosen_records = [
-                        student_tests[i]
-                        for i in st.session_state["selected_tests_indices"]
-                    ]
-                    pdf_data = generate_aims_report_pdf(chosen_records)
-                    st.download_button(
-                        label=" Click here to download PDF",
-                        data=pdf_data,
-                        file_name=f"AIMS_Report_{selected_roll}.pdf",
-                        mime="application/pdf",
+                if not student_tests:
+                    st.warning("No test records found for the selected student and subject(s).")
+                else:
+                    st.info(
+                        f"This student has a total of **{len(student_tests)}**"
+                        " test(s) matching your selection. Which tests would you like to include in the PDF file?"
                     )
+
+                    selected_tests_indices = []
+
+                    with st.form("select_tests_form"):
+                        for idx, test in enumerate(student_tests):
+                            test_label = (
+                                f"Subject: **{test[3]}** | Test: **{test[4]}** |"
+                                f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
+                            )
+                            is_checked = st.checkbox(
+                                test_label, value=True, key=f"test_chk_{idx}"
+                            )
+                            if is_checked:
+                                selected_tests_indices.append(idx)
+
+                        generate_btn = st.form_submit_button("Generate Report Data")
+
+                    if generate_btn:
+                        if not selected_tests_indices:
+                            st.warning(
+                                "Please select at least one test to generate the"
+                                " PDF report!"
+                            )
+                        else:
+                            st.session_state["selected_tests_indices"] = (
+                                selected_tests_indices
+                            )
+                            st.session_state["selected_roll"] = selected_roll
+                            st.success("Report data generated successfully!")
+
+                    if (
+                        "selected_tests_indices" in st.session_state
+                        and st.session_state.get("selected_roll") == selected_roll
+                    ):
+                        chosen_records = [
+                            student_tests[i]
+                            for i in st.session_state["selected_tests_indices"]
+                        ]
+                        pdf_data = generate_aims_report_pdf(chosen_records)
+                        st.download_button(
+                            label=" Click here to download PDF",
+                            data=pdf_data,
+                            file_name=f"AIMS_Report_{selected_roll}.pdf",
+                            mime="application/pdf",
+                        )
         else:
             st.info("No test records found.")
