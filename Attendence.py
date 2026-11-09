@@ -271,15 +271,15 @@ st.title(" AIMS Science Academy - Management System")
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            " Manage Students",
-            " Mark Attendance",
-            " Attendance Reports",
-            " Test Reports",
+            "👥 Manage Students",
+            "📝 Mark Attendance",
+            "📊 Attendance Reports",
+            "📈 Test Reports",
         ]
     )
 else:
     tab2, tab3, tab4 = st.tabs(
-        [" Mark Attendance", " Attendance Reports", " Test Reports"]
+        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
     )
     tab1 = None
 
