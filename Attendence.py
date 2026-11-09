@@ -79,7 +79,7 @@ st.set_page_config(
 init_db()
 
 
-# Function to safely convert local monogram image to base64 (Cache removed so new image loads instantly)
+# Function to safely convert local monogram image to base64
 def get_image_base64(path):
     try:
         with open(path, "rb") as image_file:
@@ -174,7 +174,7 @@ if not st.session_state.logged_in:
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 20px 0;">🎓</div>
+                <div style="font-size: 50px; margin: 20px 0;"></div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
@@ -353,8 +353,9 @@ if tab1 is not None:
 
         conn = get_db_connection()
         cursor = conn.cursor()
+        # Sorted by roll_no ASC so records always display in clean roll number order
         cursor.execute(
-            "SELECT id, name, roll_no, class_name, subjects, phone FROM students"
+            "SELECT id, name, roll_no, class_name, subjects, phone FROM students ORDER BY roll_no ASC"
         )
         students_data = cursor.fetchall()
         cursor.close()
@@ -1055,7 +1056,7 @@ with tab3:
             story.append(remarks_table)
             story.append(Spacer(1, 20))
 
-            # 5. Signatures Section (Principal Signature centered towards the middle/left gap)
+            # 5. Signatures Section
             try:
                 sign_img = Image("azim_sign.png", width=110, height=45)
             except Exception:
@@ -1771,7 +1772,7 @@ with tab4:
                 story.append(remarks_table)
                 story.append(Spacer(1, 20))
 
-                # Signatures Section (Principal Signature centered towards the middle/left gap)
+                # Signatures Section
                 try:
                     sign_img = Image("azim_sign.png", width=110, height=45)
                 except Exception:
