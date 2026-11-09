@@ -174,7 +174,7 @@ if not st.session_state.logged_in:
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 20px 0;"></div>
+                <div style="font-size: 50px; margin: 20px 0;">🎓</div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
