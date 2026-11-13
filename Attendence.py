@@ -1,5 +1,6 @@
 import base64
 from datetime import date, timedelta
+import urllib.parse
 import psycopg2
 import streamlit as st
 
@@ -23,6 +24,23 @@ def get_db_connection():
         if "unexpected eof while reading" in str(e):
             return psycopg2.connect(DATABASE_URL)
         raise e
+
+
+# Helper function to format phone number to international standard (e.g. 923001234567)
+def format_whatsapp_number(raw_phone):
+    if not raw_phone:
+        return ""
+    # Sirf digits (0-9) extract karein
+    digits = "".join(filter(str.isdigit, str(raw_phone)))
+    
+    # Agar number '0' se shuru ho raha hai (jaise 03001234567), toh shuru ka '0' hata kar '92' laga dein
+    if digits.startswith("0") and len(digits) == 11:
+        digits = "92" + digits[1:]
+    # Agar sirf 10 digits hain aur 3 se start hain (jaise 3001234567), toh '92' attach kar dein
+    elif len(digits) == 10 and digits.startswith("3"):
+        digits = "92" + digits
+        
+    return digits
 
 
 # Initialize Database (Ensuring phone column exists)
@@ -299,7 +317,7 @@ if tab1 is not None:
                 subjects = st.text_input(
                     "Subjects (comma separated, e.g. Math, Physics, Chemistry)"
                 )
-                phone = st.text_input("Home Phone Number (Admin Only)")
+                phone_input = st.text_input("Home Phone Number (e.g. 0300-1234567 or +92-300-1234567)")
 
                 submit_student = st.form_submit_button("Add Student")
 
@@ -312,6 +330,7 @@ if tab1 is not None:
                     ):
                         st.error("Please fill in all mandatory fields.")
                     else:
+                        formatted_phone = format_whatsapp_number(phone_input)
                         try:
                             conn = get_db_connection()
                             cursor = conn.cursor()
@@ -323,13 +342,13 @@ if tab1 is not None:
                                     roll_no.strip(),
                                     class_name.strip(),
                                     subjects.strip(),
-                                    phone.strip(),
+                                    formatted_phone,
                                 ),
                             )
                             conn.commit()
                             cursor.close()
                             conn.close()
-                            st.success(f"Student {name} added successfully!")
+                            st.success(f"Student {name} added successfully! (Formatted Phone: {formatted_phone})")
                             st.rerun()
                         except psycopg2.errors.UniqueViolation:
                             st.error("Roll number already exists.")
@@ -405,7 +424,7 @@ if tab1 is not None:
                     new_subjects = st.text_input(
                         "Update Subjects (comma separated)", value=curr_subjects
                     )
-                    new_phone = st.text_input(
+                    new_phone_input = st.text_input(
                         "Update Home Phone Number", value=curr_phone if curr_phone else ""
                     )
 
@@ -418,6 +437,7 @@ if tab1 is not None:
                         ):
                             st.error("Please fill in all mandatory fields.")
                         else:
+                            new_formatted_phone = format_whatsapp_number(new_phone_input)
                             conn = get_db_connection()
                             cursor = conn.cursor()
                             cursor.execute(
@@ -427,7 +447,7 @@ if tab1 is not None:
                                     new_name.strip(),
                                     new_class.strip(),
                                     new_subjects.strip(),
-                                    new_phone.strip(),
+                                    new_formatted_phone,
                                     edit_roll_no,
                                 ),
                             )
@@ -1055,7 +1075,6 @@ with tab3:
             story.append(remarks_table)
             story.append(Spacer(1, 20))
 
-            # 5. Signatures Section
             try:
                 sign_img = Image("azim_sign.png", width=110, height=45)
             except Exception:
@@ -1089,7 +1108,7 @@ with tab3:
                 return f.read()
 
         st.divider()
-        st.subheader(" Download Student Attendance PDF Report")
+        st.subheader(" Download Student Attendance PDF Report & WhatsApp Update")
 
         student_dict = {}
         student_subjects_dict = {}
@@ -1172,12 +1191,54 @@ with tab3:
                 pdf_att_data = generate_aims_attendance_pdf(
                     student_att_records, selected_pdf_subjects, days_option
                 )
-                st.download_button(
-                    label=" Click here to download Attendance PDF",
-                    data=pdf_att_data,
-                    file_name=f"AIMS_Attendance_Report_{selected_att_roll}.pdf",
-                    mime="application/pdf",
-                )
+                
+                col_dl, col_wa = st.columns(2)
+                with col_dl:
+                    st.download_button(
+                        label=" Click here to download Attendance PDF",
+                        data=pdf_att_data,
+                        file_name=f"AIMS_Attendance_Report_{selected_att_roll}.pdf",
+                        mime="application/pdf",
+                    )
+                
+                # Fetch student phone number for WhatsApp integration
+                conn_phone = get_db_connection()
+                cur_phone = conn_phone.cursor()
+                cur_phone.execute("SELECT name, phone FROM students WHERE roll_no = %s", (selected_att_roll,))
+                p_row = cur_phone.fetchone()
+                cur_phone.close()
+                conn_phone.close()
+
+                if p_row and p_row[1]:
+                    st_name, st_phone = p_row[0], format_whatsapp_number(p_row[1])
+                    att_msg = f"Assalam-o-Alaikum! AIMS Science Academy ki taraf se update: {st_name} (Roll: {selected_att_roll}) ki attendance report ({days_option}) tayar hai. Shukriya! - Principal Choudhary Asim Walyat"
+                    encoded_att_msg = urllib.parse.quote(att_msg)
+                    wa_att_url = f"https://wa.me/{st_phone}?text={encoded_att_msg}"
+                    
+                    with col_wa:
+                        st.markdown(
+                            f"""
+                            <a href="{wa_att_url}" target="_blank" style="text-decoration: none;">
+                                <div style="
+                                    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+                                    color: white;
+                                    padding: 10px 20px;
+                                    border-radius: 5px;
+                                    text-align: center;
+                                    font-weight: 600;
+                                    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                                    display: block;
+                                    margin-top: 0px;
+                                ">
+                                    💬 Send Attendance on WhatsApp
+                                </div>
+                            </a>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    with col_wa:
+                        st.info("Phone number not registered for this student.")
     else:
         st.info("No attendance records found.")
 
@@ -1783,7 +1844,6 @@ with tab4:
                 story.append(remarks_table)
                 story.append(Spacer(1, 20))
 
-                # Signatures Section
                 try:
                     sign_img = Image("azim_sign.png", width=110, height=45)
                 except Exception:
@@ -1820,7 +1880,7 @@ with tab4:
 
             st.write("---")
             st.subheader(
-                " Download Student Test Performance Report (Multi-Test Selection)"
+                " Download Student Test Performance Report & WhatsApp Update"
             )
 
             student_dict = {}
@@ -1836,7 +1896,6 @@ with tab4:
             )
 
             if selected_roll:
-                # Fetch student's enrolled subjects from database
                 conn_sub = get_db_connection()
                 cur_sub = conn_sub.cursor()
                 cur_sub.execute("SELECT subjects FROM students WHERE roll_no = %s", (selected_roll,))
@@ -1848,7 +1907,6 @@ with tab4:
                 if sub_row and sub_row[0]:
                     student_enrolled_subjects = [s.strip() for s in sub_row[0].split(",") if s.strip()]
 
-                # Subject selection box right below roll number selection
                 selected_test_subjects = st.multiselect(
                     "Select Subject(s) for Test Report",
                     options=student_enrolled_subjects,
@@ -1856,7 +1914,6 @@ with tab4:
                     key="test_pdf_subject_multiselect"
                 )
 
-                # Filter student tests based on selected roll no and selected subjects
                 student_tests = [
                     r for r in test_records 
                     if r[1] == selected_roll and (not selected_test_subjects or r[3] in selected_test_subjects)
@@ -1908,11 +1965,53 @@ with tab4:
                             for i in st.session_state["selected_tests_indices"]
                         ]
                         pdf_data = generate_aims_report_pdf(chosen_records)
-                        st.download_button(
-                            label=" Click here to download PDF",
-                            data=pdf_data,
-                            file_name=f"AIMS_Report_{selected_roll}.pdf",
-                            mime="application/pdf",
-                        )
+                        
+                        col_dl_test, col_wa_test = st.columns(2)
+                        with col_dl_test:
+                            st.download_button(
+                                label=" Click here to download PDF",
+                                data=pdf_data,
+                                file_name=f"AIMS_Report_{selected_roll}.pdf",
+                                mime="application/pdf",
+                            )
+
+                        # Fetch student phone number for WhatsApp test marks notification
+                        conn_tphone = get_db_connection()
+                        cur_tphone = conn_tphone.cursor()
+                        cur_tphone.execute("SELECT name, phone FROM students WHERE roll_no = %s", (selected_roll,))
+                        tp_row = cur_tphone.fetchone()
+                        cur_tphone.close()
+                        conn_tphone.close()
+
+                        if tp_row and tp_row[1]:
+                            st_name, st_phone = tp_row[0], format_whatsapp_number(tp_row[1])
+                            test_msg = f"Assalam-o-Alaikum! AIMS Science Academy ki taraf se update: {st_name} (Roll: {selected_roll}) ki test performance report tayar hai. Shukriya! - Principal Choudhary Asim Walyat"
+                            encoded_test_msg = urllib.parse.quote(test_msg)
+                            wa_test_url = f"https://wa.me/{st_phone}?text={encoded_test_msg}"
+                            
+                            with col_wa_test:
+                                st.markdown(
+                                    f"""
+                                    <a href="{wa_test_url}" target="_blank" style="text-decoration: none;">
+                                        <div style="
+                                            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+                                            color: white;
+                                            padding: 10px 20px;
+                                            border-radius: 5px;
+                                            text-align: center;
+                                            font-weight: 600;
+                                            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                                            display: block;
+                                            margin-top: 0px;
+                                        ">
+                                            💬 Send Test Report on WhatsApp
+                                        </div>
+                                    </a>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
+                        else:
+                            with col_wa_test:
+                                st.info("Phone number not registered for this student.")
         else:
             st.info("No test records found.")
