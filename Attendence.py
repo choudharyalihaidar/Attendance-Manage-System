@@ -173,9 +173,12 @@ TEACHER_CREDENTIALS = {
     "Miss Areej": ("Sciences", "areej4321"),
 }
 
-# Teacher Subject Restrictions (Add more teachers here later if needed)
+# Teacher Subject Restrictions
 TEACHER_SUBJECT_FILTER = {
     "Sir Shumam-ul-Hassan": ["Math"],
+    "Sir Jahangir Malik": ["Physics"],
+    "Sir Umair Hunjra": ["Computer"],
+    "Miss Areej": ["Biology", "Chemistry"],
 }
 
 # ==========================================
@@ -1941,7 +1944,7 @@ with tab4:
                 # Subject selection box right below roll number selection
                 selected_test_subjects = st.multiselect(
                     "Select Subject(s) for Test Report",
-                    options=student_enrolled_subjects,
+                    options=student_enrolled_templates := student_enrolled_subjects,
                     default=student_enrolled_subjects,
                     key="test_pdf_subject_multiselect"
                 )
