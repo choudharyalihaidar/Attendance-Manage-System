@@ -173,7 +173,7 @@ TEACHER_CREDENTIALS = {
     "Miss Areej": ("Sciences", "areej4321"),
 }
 
-# Teacher Subject Restrictions (Sir Shumam updated to Math & Stats)
+# Teacher Subject Restrictions
 TEACHER_SUBJECT_FILTER = {
     "Sir Shumam-ul-Hassan": ["Math", "Stats"],
     "Sir Jahangir Malik": ["Physics"],
@@ -318,7 +318,7 @@ if st.sidebar.button("Logout"):
 
 st.title(" AIMS Science Academy - Management System")
 
-# Role-based Navigation Tabs
+# Role-based Navigation Tabs (Admin gets 4 tabs, Teachers get 3 tabs)
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
@@ -329,10 +329,10 @@ if st.session_state.role == "admin":
         ]
     )
 else:
-    tab2, tab3, tab4 = st.tabs(
-        ["👥 Manage Students", "📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
-    )
     tab1 = None
+    tab2, tab3, tab4 = st.tabs(
+        ["👥 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+    )
 
 # ==========================================
 # TAB 1: MANAGE STUDENTS (ADMIN ONLY)
