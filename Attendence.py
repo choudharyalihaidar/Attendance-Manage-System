@@ -173,6 +173,11 @@ TEACHER_CREDENTIALS = {
     "Miss Areej": ("Sciences", "areej4321"),
 }
 
+# Teacher Subject Restrictions (Add more teachers here later if needed)
+TEACHER_SUBJECT_FILTER = {
+    "Sir Shumam-ul-Hassan": ["Math"],
+}
+
 # ==========================================
 # LOGIN SCREEN (3-COLUMN LAYOUT WITH MONOGRAM)
 # ==========================================
@@ -285,6 +290,22 @@ role_display = (
     if st.session_state.get("user_display")
     else (st.session_state.role.upper() if st.session_state.role else "")
 )
+
+# Determine allowed subjects for the currently logged-in user (None = all subjects allowed)
+allowed_subjects = TEACHER_SUBJECT_FILTER.get(
+    st.session_state.get("user_display"), None
+)
+allowed_subjects_lower = (
+    [s.strip().lower() for s in allowed_subjects] if allowed_subjects else None
+)
+
+
+def is_subject_allowed(sub_name):
+    if allowed_subjects_lower is None:
+        return True
+    return sub_name.strip().lower() in allowed_subjects_lower
+
+
 st.sidebar.markdown(f" Logged in as: **{role_display}**")
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
@@ -528,13 +549,25 @@ with tab2:
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT class_name FROM students")
-    classes = [row[0] for row in cursor.fetchall() if row[0]]
+    cursor.execute("SELECT DISTINCT class_name, subjects FROM students")
+    class_rows = cursor.fetchall()
     cursor.close()
     conn.close()
 
+    classes_set = set()
+    for c_name, c_subs in class_rows:
+        if not c_name:
+            continue
+        if allowed_subjects_lower is None:
+            classes_set.add(c_name)
+        else:
+            stu_subs = [s.strip() for s in (c_subs or "").split(",") if s.strip()]
+            if any(is_subject_allowed(s) for s in stu_subs):
+                classes_set.add(c_name)
+    classes = sorted(list(classes_set))
+
     if not classes:
-        st.warning("No classes found. Please add students first.")
+        st.warning("No classes found for your assigned subject(s).")
     else:
         col_c1, col_c2 = st.columns(2)
         with col_c1:
@@ -556,7 +589,7 @@ with tab2:
         for row in rows:
             for sub in row[0].split(","):
                 clean_sub = sub.strip()
-                if clean_sub:
+                if clean_sub and is_subject_allowed(clean_sub):
                     all_subjects.add(clean_sub)
 
         subject_list = sorted(list(all_subjects))
@@ -581,7 +614,9 @@ with tab2:
 
             enrolled_students = []
             for roll_no, name, subjects in students:
-                if selected_subject in [s.strip() for s in subjects.split(",")]:
+                if selected_subject.strip().lower() in [
+                    s.strip().lower() for s in subjects.split(",")
+                ]:
                     enrolled_students.append((roll_no, name))
 
             if not enrolled_students:
@@ -695,6 +730,10 @@ with tab3:
     records = cursor.fetchall()
     cursor.close()
     conn.close()
+
+    # Filter attendance records by teacher's allowed subject(s)
+    if allowed_subjects_lower is not None:
+        records = [r for r in records if r[3] and is_subject_allowed(r[3])]
 
     if records:
         report_table = [
@@ -1222,15 +1261,27 @@ with tab4:
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT class_name FROM students")
-    classes = [row[0] for row in cursor.fetchall() if row[0]]
+    cursor.execute("SELECT DISTINCT class_name, subjects FROM students")
+    class_rows_test = cursor.fetchall()
     cursor.close()
     conn.close()
+
+    classes_set_test = set()
+    for c_name, c_subs in class_rows_test:
+        if not c_name:
+            continue
+        if allowed_subjects_lower is None:
+            classes_set_test.add(c_name)
+        else:
+            stu_subs = [s.strip() for s in (c_subs or "").split(",") if s.strip()]
+            if any(is_subject_allowed(s) for s in stu_subs):
+                classes_set_test.add(c_name)
+    classes = sorted(list(classes_set_test))
 
     if test_action == "Enter / Update Test Marks":
         st.markdown("### Enter Test Scores")
         if not classes:
-            st.warning("No classes found. Please add students first.")
+            st.warning("No classes found for your assigned subject(s).")
         else:
             col_t1, col_t2, col_t3 = st.columns(3)
             with col_t1:
@@ -1252,7 +1303,7 @@ with tab4:
             for row in rows:
                 for sub in row[0].split(","):
                     clean_sub = sub.strip()
-                    if clean_sub:
+                    if clean_sub and is_subject_allowed(clean_sub):
                         t_subjects.add(clean_sub)
             test_subject_list = sorted(list(t_subjects))
 
@@ -1291,7 +1342,9 @@ with tab4:
 
                 enrolled_students = []
                 for roll_no, name, subjects in students:
-                    if test_subject in [s.strip() for s in subjects.split(",")]:
+                    if test_subject.strip().lower() in [
+                        s.strip().lower() for s in subjects.split(",")
+                    ]:
                         enrolled_students.append((roll_no, name))
 
                 if not enrolled_students:
@@ -1456,6 +1509,12 @@ with tab4:
         test_records = cursor.fetchall()
         cursor.close()
         conn.close()
+
+        # Filter test records by teacher's allowed subject(s)
+        if allowed_subjects_lower is not None:
+            test_records = [
+                r for r in test_records if r[3] and is_subject_allowed(r[3])
+            ]
 
         if test_records:
             test_report_table = [
@@ -1873,7 +1932,11 @@ with tab4:
 
                 student_enrolled_subjects = []
                 if sub_row and sub_row[0]:
-                    student_enrolled_subjects = [s.strip() for s in sub_row[0].split(",") if s.strip()]
+                    student_enrolled_subjects = [
+                        s.strip()
+                        for s in sub_row[0].split(",")
+                        if s.strip() and is_subject_allowed(s.strip())
+                    ]
 
                 # Subject selection box right below roll number selection
                 selected_test_subjects = st.multiselect(
