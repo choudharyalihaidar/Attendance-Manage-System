@@ -170,6 +170,7 @@ TEACHER_CREDENTIALS = {
     "Sir Jahangir Malik": ("Physics", "physics4321"),
     "Sir Luqman": ("Arts", "arts4321"),
     "Sir Umair Hunjra": ("Computer", "computer4321"),
+    "Miss Areej": ("Sciences", "areej4321"),
 }
 
 # ==========================================
@@ -210,6 +211,7 @@ if not st.session_state.logged_in:
                 "Sir Jahangir Malik",
                 "Sir Luqman",
                 "Sir Umair Hunjra",
+                "Miss Areej",
             ]
             login_role = st.selectbox("Select Account Type", account_options)
             username_input = st.text_input("Username", placeholder="Your Username")
