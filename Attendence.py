@@ -405,21 +405,21 @@ if tab1 is not None:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, name, roll_no, class_name, subjects, phone FROM students ORDER BY roll_no ASC"
+            "SELECT name, roll_no, class_name, subjects, phone FROM students ORDER BY roll_no ASC"
         )
         students_data = cursor.fetchall()
         cursor.close()
         conn.close()
 
         if students_data:
+            # Table data without ID column
             table_data = [
                 {
-                    "ID": r[0],
-                    "Name": r[1],
-                    "Roll No": r[2],
-                    "Class": r[3],
-                    "Subjects": r[4],
-                    "Home Phone": r[5] if r[5] else "N/A",
+                    "Name": r[0],
+                    "Roll No": r[1],
+                    "Class": r[2],
+                    "Subjects": r[3],
+                    "Home Phone": r[4] if r[4] else "N/A",
                 }
                 for r in students_data
             ]
@@ -430,7 +430,7 @@ if tab1 is not None:
             st.subheader(" Edit Student Details")
             edit_roll_no = st.selectbox(
                 "Select Roll No to Edit",
-                options=[r[2] for r in students_data],
+                options=[r[1] for r in students_data],
                 key="edit_select_box",
             )
 
@@ -495,7 +495,7 @@ if tab1 is not None:
             with col_del1:
                 roll_to_delete = st.selectbox(
                     "Select Roll No to Delete",
-                    options=[r[2] for r in students_data],
+                    options=[r[1] for r in students_data],
                     key="delete_select",
                 )
                 if st.button("Delete Selected Student"):
