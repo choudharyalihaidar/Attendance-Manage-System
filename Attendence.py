@@ -173,9 +173,9 @@ TEACHER_CREDENTIALS = {
     "Miss Areej": ("Sciences", "areej4321"),
 }
 
-# Teacher Subject Restrictions
+# Teacher Subject Restrictions (Sir Shumam updated to Math & Stats)
 TEACHER_SUBJECT_FILTER = {
-    "Sir Shumam-ul-Hassan": ["Math"],
+    "Sir Shumam-ul-Hassan": ["Math", "Stats"],
     "Sir Jahangir Malik": ["Physics"],
     "Sir Umair Hunjra": ["Computer"],
     "Miss Areej": ["Biology", "Chemistry"],
@@ -330,7 +330,7 @@ if st.session_state.role == "admin":
     )
 else:
     tab2, tab3, tab4 = st.tabs(
-        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+        ["👥 Manage Students", "📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
     )
     tab1 = None
 
