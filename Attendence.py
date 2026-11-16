@@ -162,6 +162,15 @@ st.markdown(
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.role = None
+    st.session_state.user_display = None
+
+# Teacher Credentials Dictionary
+TEACHER_CREDENTIALS = {
+    "Sir Shumam-ul-Hassan": ("Math", "math4321"),
+    "Sir Jahangir Malik": ("Physics", "physics4321"),
+    "Sir Luqman": ("Arts", "arts4321"),
+    "Sir Umair Hunjra": ("Computer", "computer4321"),
+}
 
 # ==========================================
 # LOGIN SCREEN (3-COLUMN LAYOUT WITH MONOGRAM)
@@ -174,7 +183,7 @@ if not st.session_state.logged_in:
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 20px 0;">🎓</div>
+                <div style="font-size: 50px; margin: 20px 0;"></div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
@@ -195,9 +204,14 @@ if not st.session_state.logged_in:
         )
 
         with st.form("login_form"):
-            login_role = st.selectbox(
-                "Select Account Type", ["Class Teacher", "Admin / Programmer"]
-            )
+            account_options = [
+                "Admin",
+                "Sir Shumam-ul-Hassan",
+                "Sir Jahangir Malik",
+                "Sir Luqman",
+                "Sir Umair Hunjra",
+            ]
+            login_role = st.selectbox("Select Account Type", account_options)
             username_input = st.text_input("Username", placeholder="Your Username")
             password_input = st.text_input(
                 "Password", type="password", placeholder="Your Password"
@@ -213,25 +227,31 @@ if not st.session_state.logged_in:
             login_submitted = st.form_submit_button("Login")
 
             if login_submitted:
-                if login_role == "Admin / Programmer":
+                if login_role == "Admin":
                     if (
                         username_input == "admin"
                         and password_input == "19072009"
                     ):
                         st.session_state.logged_in = True
                         st.session_state.role = "admin"
+                        st.session_state.user_display = "ADMIN"
                         st.success("Admin login successful!")
                         st.rerun()
                     else:
                         st.error("Incorrect Admin username or password!")
-                else:
-                    if username_input == "teacher" and password_input == "abcd4321":
+                elif login_role in TEACHER_CREDENTIALS:
+                    expected_user, expected_pass = TEACHER_CREDENTIALS[login_role]
+                    if (
+                        username_input == expected_user
+                        and password_input == expected_pass
+                    ):
                         st.session_state.logged_in = True
                         st.session_state.role = "teacher"
-                        st.success("Class Teacher login successful!")
+                        st.session_state.user_display = login_role
+                        st.success(f"{login_role} login successful!")
                         st.rerun()
                     else:
-                        st.error("Incorrect Teacher username or password!")
+                        st.error(f"Incorrect username or password for {login_role}!")
 
     with col3:
         st.markdown(
@@ -258,11 +278,16 @@ if not st.session_state.logged_in:
 # ==========================================
 # MAIN APPLICATION (AFTER LOGIN)
 # ==========================================
-role_display = st.session_state.role.upper() if st.session_state.role else ""
+role_display = (
+    st.session_state.user_display
+    if st.session_state.get("user_display")
+    else (st.session_state.role.upper() if st.session_state.role else "")
+)
 st.sidebar.markdown(f" Logged in as: **{role_display}**")
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.session_state.role = None
+    st.session_state.user_display = None
     st.rerun()
 
 st.title(" AIMS Science Academy - Management System")
@@ -271,15 +296,15 @@ st.title(" AIMS Science Academy - Management System")
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "👥 Manage Students",
-            "📝 Mark Attendance",
-            "📊 Attendance Reports",
-            "📈 Test Reports",
+            " Manage Students",
+            " Mark Attendance",
+            " Attendance Reports",
+            " Test Reports",
         ]
     )
 else:
     tab2, tab3, tab4 = st.tabs(
-        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+        [" Mark Attendance", " Attendance Reports", " Test Reports"]
     )
     tab1 = None
 
