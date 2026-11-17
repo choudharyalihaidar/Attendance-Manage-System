@@ -295,6 +295,7 @@ role_display = (
     else (st.session_state.role.upper() if st.session_state.role else "")
 )
 
+# Determine allowed subjects for the currently logged-in user (None = all subjects allowed)
 allowed_subjects = TEACHER_SUBJECT_FILTER.get(
     st.session_state.get("user_display"), None
 )
@@ -318,7 +319,7 @@ if st.sidebar.button("Logout"):
 
 st.title(" AIMS Science Academy - Management System")
 
-# Role-based Navigation Tabs
+# Role-based Navigation Tabs (Admin gets 4 tabs, Teachers get 3 tabs)
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
@@ -412,6 +413,7 @@ if tab1 is not None:
         conn.close()
 
         if students_data:
+            # Table data without ID column
             table_data = [
                 {
                     "Name": r[0],
@@ -424,6 +426,7 @@ if tab1 is not None:
             ]
             st.dataframe(table_data, use_container_width=True)
 
+            # --- EDIT STUDENT SECTION ---
             st.divider()
             st.subheader(" Edit Student Details")
             edit_roll_no = st.selectbox(
@@ -589,7 +592,7 @@ with tab2:
         all_subjects = set()
         for row in rows:
             for sub in row[0].split(","):
-                clean_sub = "Business Stats" if sub.strip().lower() in ["stats", "business stats"] else sub.strip()
+                clean_sub = sub.strip()
                 if clean_sub and is_subject_allowed(clean_sub):
                     all_subjects.add(clean_sub)
 
@@ -615,11 +618,9 @@ with tab2:
 
             enrolled_students = []
             for roll_no, name, subjects in students:
-                sub_list = [
-                    "Business Stats" if s.strip().lower() in ["stats", "business stats"] else s.strip()
-                    for s in subjects.split(",")
-                ]
-                if selected_subject.strip().lower() in [s.lower() for s in sub_list]:
+                if selected_subject.strip().lower() in [
+                    s.strip().lower() for s in subjects.split(",")
+                ]:
                     enrolled_students.append((roll_no, name))
 
             if not enrolled_students:
@@ -734,11 +735,9 @@ with tab3:
     cursor.close()
     conn.close()
 
+    # Filter attendance records by teacher's allowed subject(s)
     if allowed_subjects_lower is not None:
-        records = [
-            r for r in records 
-            if r[3] and is_subject_allowed("Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3])
-        ]
+        records = [r for r in records if r[3] and is_subject_allowed(r[3])]
 
     if records:
         report_table = [
@@ -746,7 +745,7 @@ with tab3:
                 "Student Name": r[0],
                 "Roll Number": r[1],
                 "Class": r[2],
-                "Subject": "Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3],
+                "Subject": r[3],
                 "Date": r[4],
                 "Status": r[5],
             }
@@ -763,12 +762,10 @@ with tab3:
             all_dates_set = set()
             for r in selected_records:
                 _, _, _, sub_name, d_str, status_val = r
-                clean_sub_name = "Business Stats" if sub_name.strip().lower() in ["stats", "business stats"] else sub_name.strip()
-                
                 all_dates_set.add(d_str)
                 if d_str not in date_map:
                     date_map[d_str] = {}
-                date_map[d_str][clean_sub_name] = status_val
+                date_map[d_str][sub_name] = status_val
 
             sorted_dates = sorted(list(all_dates_set), reverse=False)
 
@@ -787,13 +784,7 @@ with tab3:
                 present_count = 0
                 subject_statuses = []
                 for sub in selected_pdf_subjects:
-                    sub_clean = sub.strip()
-                    status = date_map.get(d_str, {}).get(sub_clean, "-")
-                    if status == "-" and sub_clean.lower() in ["stats", "business stats"]:
-                        status = date_map.get(d_str, {}).get("Stats", "-")
-                        if status == "-":
-                            status = date_map.get(d_str, {}).get("Business Stats", "-")
-
+                    status = date_map.get(d_str, {}).get(sub, "-")
                     if status.lower() == "present":
                         present_count += 1
                         subject_statuses.append("P")
@@ -836,16 +827,86 @@ with tab3:
                 bottomMargin=36,
             )
             story = []
+
             styles = getSampleStyleSheet()
 
-            title_style = ParagraphStyle("TitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=colors.HexColor("#2A2B6E"))
-            subtitle_style = ParagraphStyle("SubtitleStyle", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#444444"))
-            report_title_style = ParagraphStyle("ReportTitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, textColor=colors.white)
-            section_heading = ParagraphStyle("SectionHeading", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.white)
-            cell_style = ParagraphStyle("CellStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=12, textColor=colors.HexColor("#111111"))
-            cell_center = ParagraphStyle("CellCenter", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.HexColor("#111111"))
-            cell_bold = ParagraphStyle("CellBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=colors.HexColor("#111111"))
-            cell_center_bold = ParagraphStyle("CellCenterBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.HexColor("#111111"))
+            title_style = ParagraphStyle(
+                "TitleStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=15,
+                leading=18,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#2A2B6E"),
+            )
+
+            subtitle_style = ParagraphStyle(
+                "SubtitleStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica-Oblique",
+                fontSize=8.5,
+                leading=11,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#444444"),
+            )
+
+            report_title_style = ParagraphStyle(
+                "ReportTitleStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                leading=13,
+                alignment=TA_CENTER,
+                textColor=colors.white,
+            )
+
+            section_heading = ParagraphStyle(
+                "SectionHeading",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
+                textColor=colors.white,
+            )
+
+            cell_style = ParagraphStyle(
+                "CellStyle",
+                parent=styles["Normal"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            cell_center = ParagraphStyle(
+                "CellCenter",
+                parent=styles["Normal"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            cell_bold = ParagraphStyle(
+                "CellBold",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#111111"),
+            )
+
+            cell_center_bold = ParagraphStyle(
+                "CellCenterBold",
+                parent=styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#111111"),
+            )
 
             try:
                 logo_img = Image("monomono.png", width=55, height=55)
@@ -857,64 +918,116 @@ with tab3:
                 Spacer(1, 2),
                 Paragraph('"Illuminating Minds, Shaping Futures"', subtitle_style),
                 Spacer(1, 3),
-                Paragraph("Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email: aimsscienceacademy6@gmail.com", subtitle_style),
+                Paragraph(
+                    "Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email:"
+                    " aimsscienceacademy6@gmail.com",
+                    subtitle_style,
+                ),
                 Spacer(1, 2),
-                Paragraph("Address: Inside Staff Gala, Near TIPS Model School Sargodha Road, Gujrat.", subtitle_style),
+                Paragraph(
+                    "Address: Inside Staff Gala, Near TIPS Model School Sargodha"
+                    " Road, Gujrat.",
+                    subtitle_style,
+                ),
             ]
 
-            header_table = Table([[logo_img, header_text_content]], colWidths=[70, 470])
-            header_table.setStyle(TableStyle([
-                ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#2A2B6E")),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F9F9F9")),
-            ]))
+            header_table = Table(
+                [[logo_img, header_text_content]], colWidths=[70, 470]
+            )
+            header_table.setStyle(
+                TableStyle([
+                    ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#2A2B6E")),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F9F9F9")),
+                ])
+            )
             story.append(header_table)
             story.append(Spacer(1, 10))
 
-            report_title = Table([[Paragraph("STUDENT ATTENDANCE REPORT", report_title_style)]], colWidths=[540])
-            report_title.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]))
+            report_title = Table(
+                [[Paragraph("STUDENT ATTENDANCE REPORT", report_title_style)]],
+                colWidths=[540],
+            )
+            report_title.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ])
+            )
             story.append(report_title)
             story.append(Spacer(1, 5))
 
-            principal_p = Paragraph("<b>Principal: Choudhary Asim Walyat</b>", ParagraphStyle("Prin", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER))
+            principal_p = Paragraph(
+                "<b>Principal: Choudhary Asim Walyat</b>",
+                ParagraphStyle(
+                    "Prin",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    alignment=TA_CENTER,
+                ),
+            )
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
             subj_label_str = ", ".join(selected_pdf_subjects) if selected_pdf_subjects else "None"
 
             info_data = [
-                [Paragraph("<b>Student Name</b>", cell_bold), Paragraph(f": {name}", cell_style), Paragraph("<b>Subject(s)</b>", cell_bold), Paragraph(f": {subj_label_str}", cell_style)],
-                [Paragraph("<b>Roll No.</b>", cell_bold), Paragraph(f": {roll_no}", cell_style), Paragraph("<b>Report Date</b>", cell_bold), Paragraph(f": {current_printing_date}", cell_style)],
-                [Paragraph("<b>Class/Batch</b>", cell_bold), Paragraph(f": {class_name}", cell_style), Paragraph("<b>Duration</b>", cell_bold), Paragraph(f": {days_range_label}", cell_style)],
+                [
+                    Paragraph("<b>Student Name</b>", cell_bold),
+                    Paragraph(f": {name}", cell_style),
+                    Paragraph("<b>Subject(s)</b>", cell_bold),
+                    Paragraph(f": {subj_label_str}", cell_style),
+                ],
+                [
+                    Paragraph("<b>Roll No.</b>", cell_bold),
+                    Paragraph(f": {roll_no}", cell_style),
+                    Paragraph("<b>Report Date</b>", cell_bold),
+                    Paragraph(f": {current_printing_date}", cell_style),
+                ],
+                [
+                    Paragraph("<b>Class/Batch</b>", cell_bold),
+                    Paragraph(f": {class_name}", cell_style),
+                    Paragraph("<b>Duration</b>", cell_bold),
+                    Paragraph(f": {days_range_label}", cell_style),
+                ],
             ]
             info_table = Table(info_data, colWidths=[90, 180, 90, 180])
-            info_table.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#CCCCCC")),
-            ]))
+            info_table.setStyle(
+                TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#CCCCCC")),
+                ])
+            )
             story.append(info_table)
             story.append(Spacer(1, 10))
 
-            log_title = Table([[Paragraph("DAILY ATTENDANCE", report_title_style)]], colWidths=[540])
-            log_title.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]))
+            log_title = Table(
+                [[Paragraph("DAILY ATTENDANCE", report_title_style)]],
+                colWidths=[540],
+            )
+            log_title.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ])
+            )
             story.append(log_title)
 
             num_subs = len(selected_pdf_subjects)
-            sub_col_width = (330.0 / num_subs) if num_subs > 0 else 330.0
+            if num_subs > 0:
+                sub_col_width = 330.0 / num_subs
+            else:
+                sub_col_width = 330.0
+
             col_widths = [100.0] + [sub_col_width] * max(num_subs, 1) + [110.0]
 
             header_row_1 = [Paragraph("<b>Date</b>", section_heading), Paragraph("<b>Subjects</b>", section_heading)]
@@ -945,8 +1058,10 @@ with tab3:
 
             c1_start = 0
             c1_end = span_size + (1 if rem > 0 else 0) - 1
+
             c2_start = c1_end + 1
             c2_end = c2_start + span_size + (1 if rem > 1 else 0) - 1
+
             c3_start = c2_end + 1
             c3_end = total_cols - 1
 
@@ -973,53 +1088,113 @@ with tab3:
 
             matrix_table = Table(matrix_rows, colWidths=col_widths)
             matrix_table.setStyle(TableStyle(table_style_commands))
+
             story.append(matrix_table)
             story.append(Spacer(1, 40))
 
-            remarks_title = Paragraph("<b>TEACHER'S REMARKS</b>", ParagraphStyle("RT", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, textColor=colors.HexColor("#111111")))
-            remarks_p = Paragraph(f'"{remarks_text}"', ParagraphStyle("RText", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=9, textColor=colors.HexColor("#333333")))
-            remarks_table = Table([[remarks_title], [remarks_p]], colWidths=[540])
-            remarks_table.setStyle(TableStyle([("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
+            remarks_title = Paragraph(
+                "<b>TEACHER'S REMARKS</b>",
+                ParagraphStyle(
+                    "RT",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    textColor=colors.HexColor("#111111"),
+                ),
+            )
+            remarks_p = Paragraph(
+                f'"{remarks_text}"',
+                ParagraphStyle(
+                    "RText",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Oblique",
+                    fontSize=9,
+                    textColor=colors.HexColor("#333333"),
+                ),
+            )
+
+            remarks_table = Table(
+                [[remarks_title], [remarks_p]], colWidths=[540]
+            )
+            remarks_table.setStyle(
+                TableStyle([
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ])
+            )
             story.append(remarks_table)
             story.append(Spacer(1, 20))
 
+            # 5. Signatures Section
             try:
                 sign_img = Image("asim_sign.png", width=110, height=45)
             except Exception:
                 sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
 
             sig_data = [
-                [Paragraph("____________________________", cell_style), sign_img],
-                [Paragraph("<b>Parent's Signature</b>", cell_style), Paragraph("<b>Principal / Teacher's Signature</b>", cell_style)],
+                [
+                    Paragraph("____________________________", cell_style),
+                    sign_img,
+                ],
+                [
+                    Paragraph("<b>Parent's Signature</b>", cell_style),
+                    Paragraph("<b>Principal / Teacher's Signature</b>", cell_style),
+                ],
             ]
             sig_table = Table(sig_data, colWidths=[270, 270])
-            sig_table.setStyle(TableStyle([
-                ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                ("ALIGN", (1, 0), (1, -1), "LEFT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (1, 0), (1, -1), 40),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-            ]))
+            sig_table.setStyle(
+                TableStyle([
+                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                    ("ALIGN", (1, 0), (1, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (1, 0), (1, -1), 40),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ])
+            )
             story.append(sig_table)
 
             doc.build(story)
             with open(filename, "rb") as f:
                 return f.read()
 
+        # ==========================================
+        # FUNCTION FOR ALL STUDENTS ATTENDANCE PDF
+        # ==========================================
         def generate_aims_all_attendance_pdf(all_records, start_d, end_d, class_filter_val):
             filename = f"AIMS_All_Students_Attendance_{start_d}_to_{end_d}.pdf"
-            doc = SimpleDocTemplate(filename, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+            doc = SimpleDocTemplate(
+                filename,
+                pagesize=letter,
+                rightMargin=36,
+                leftMargin=36,
+                topMargin=36,
+                bottomMargin=36,
+            )
             story = []
             styles = getSampleStyleSheet()
 
-            title_style = ParagraphStyle("TitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=colors.HexColor("#2A2B6E"))
-            subtitle_style = ParagraphStyle("SubtitleStyle", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#444444"))
-            report_title_style = ParagraphStyle("ReportTitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, textColor=colors.white)
-            section_heading = ParagraphStyle("SectionHeading", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.white)
-            cell_style = ParagraphStyle("CellStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=11, textColor=colors.HexColor("#111111"))
-            cell_center = ParagraphStyle("CellCenter", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#111111"))
-            cell_bold = ParagraphStyle("CellBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=colors.HexColor("#111111"))
+            title_style = ParagraphStyle(
+                "TitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=colors.HexColor("#2A2B6E")
+            )
+            subtitle_style = ParagraphStyle(
+                "SubtitleStyle", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#444444")
+            )
+            report_title_style = ParagraphStyle(
+                "ReportTitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, textColor=colors.white
+            )
+            section_heading = ParagraphStyle(
+                "SectionHeading", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.white
+            )
+            cell_style = ParagraphStyle(
+                "CellStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=11, textColor=colors.HexColor("#111111")
+            )
+            cell_center = ParagraphStyle(
+                "CellCenter", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#111111")
+            )
+            cell_bold = ParagraphStyle(
+                "CellBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=colors.HexColor("#111111")
+            )
 
             try:
                 logo_img = Image("monomono.png", width=55, height=55)
@@ -1058,7 +1233,10 @@ with tab3:
             story.append(report_title)
             story.append(Spacer(1, 5))
 
-            principal_p = Paragraph("<b>Principal: Choudhary Asim Walyat</b>", ParagraphStyle("Prin", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER))
+            principal_p = Paragraph(
+                "<b>Principal: Choudhary Asim Walyat</b>",
+                ParagraphStyle("Prin", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER)
+            )
             story.append(principal_p)
             story.append(Spacer(1, 8))
 
@@ -1073,17 +1251,19 @@ with tab3:
                 Paragraph("<b>%</b>", section_heading),
             ]]
 
+            # Filter records by date range
             filtered = []
             for r in all_records:
+                # r = (name, roll_no, class_name, subject, date, status)
                 d_val = r[4]
                 if start_d <= d_val <= end_d:
                     filtered.append(r)
 
+            # Aggregate stats per student & subject
             stats_map = {}
             for r in filtered:
                 s_name, s_roll, s_class, s_sub, _, status_val = r
-                clean_sub = "Business Stats" if s_sub.strip().lower() in ["stats", "business stats"] else s_sub.strip()
-                key = (s_roll, s_name, s_class, clean_sub)
+                key = (s_roll, s_name, s_class, s_sub)
                 if key not in stats_map:
                     stats_map[key] = {"present": 0, "absent": 0}
                 if status_val.lower() == "present":
@@ -1120,14 +1300,21 @@ with tab3:
             story.append(all_table)
             story.append(Spacer(1, 30))
 
+            # Signatures
             try:
                 sign_img = Image("asim_sign.png", width=110, height=45)
             except Exception:
                 sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
 
             sig_data = [
-                [Paragraph("____________________________", cell_style), sign_img],
-                [Paragraph("<b>Parent's Signature</b>", cell_style), Paragraph("<b>Principal / Teacher's Signature</b>", cell_style)],
+                [
+                    Paragraph("____________________________", cell_style),
+                    sign_img,
+                ],
+                [
+                    Paragraph("<b>Parent's Signature</b>", cell_style),
+                    Paragraph("<b>Principal / Teacher's Signature</b>", cell_style),
+                ],
             ]
             sig_table = Table(sig_data, colWidths=[270, 270])
             sig_table.setStyle(TableStyle([
@@ -1155,8 +1342,7 @@ with tab3:
             if s_roll not in student_subjects_dict:
                 student_subjects_dict[s_roll] = set()
             if s_sub:
-                clean_sub = "Business Stats" if s_sub.strip().lower() in ["stats", "business stats"] else s_sub.strip()
-                student_subjects_dict[s_roll].add(clean_sub)
+                student_subjects_dict[s_roll].add(s_sub)
 
         col_att_sel1, col_att_sel2 = st.columns(2)
         with col_att_sel1:
@@ -1179,6 +1365,7 @@ with tab3:
                 key="att_days_range",
             )
 
+        # Custom date pickers if "Custom Date Range" is selected
         custom_start_date = None
         custom_end_date = None
         if days_option == "Custom Date Range":
@@ -1199,44 +1386,54 @@ with tab3:
                 key="att_pdf_subjects",
             )
 
-            student_att_records = []
-            for r in records:
-                if r[1] == selected_att_roll:
-                    s_sub = r[3]
-                    clean_sub = "Business Stats" if s_sub and s_sub.strip().lower() in ["stats", "business stats"] else s_sub
-                    if not selected_pdf_subjects or clean_sub in selected_pdf_subjects:
-                        r_modified = (r[0], r[1], r[2], clean_sub, r[4], r[5])
-                        student_att_records.append(r_modified)
+            student_att_records = [
+                r
+                for r in records
+                if r[1] == selected_att_roll
+                and (
+                    not selected_pdf_subjects
+                    or r[3] in selected_pdf_subjects
+                )
+            ]
 
             if days_option == "Last 7 Days":
                 cutoff_date = date.today() - timedelta(days=7)
                 student_att_records = [
-                    r for r in student_att_records
+                    r
+                    for r in student_att_records
                     if date.fromisoformat(r[4]) >= cutoff_date
                 ]
             elif days_option == "Last 15 Days":
                 cutoff_date = date.today() - timedelta(days=15)
                 student_att_records = [
-                    r for r in student_att_records
+                    r
+                    for r in student_att_records
                     if date.fromisoformat(r[4]) >= cutoff_date
                 ]
             elif days_option == "Last 30 Days":
                 cutoff_date = date.today() - timedelta(days=30)
                 student_att_records = [
-                    r for r in student_att_records
+                    r
+                    for r in student_att_records
                     if date.fromisoformat(r[4]) >= cutoff_date
                 ]
             elif days_option == "Custom Date Range":
                 if custom_start_date and custom_end_date:
                     student_att_records = [
-                        r for r in student_att_records
+                        r
+                        for r in student_att_records
                         if custom_start_date <= date.fromisoformat(r[4]) <= custom_end_date
                     ]
             
-            days_range_label = f"Custom ({custom_start_date} to {custom_end_date})" if days_option == "Custom Date Range" else days_option
+            if days_option == "Custom Date Range":
+                days_range_label = f"Custom ({custom_start_date} to {custom_end_date})"
+            else:
+                days_range_label = days_option
 
             if not student_att_records:
-                st.warning("No attendance records found for the selected student, subjects, and duration.")
+                st.warning(
+                    "No attendance records found for the selected student, subjects, and duration."
+                )
             else:
                 pdf_att_data = generate_aims_attendance_pdf(
                     student_att_records, selected_pdf_subjects, days_range_label
@@ -1248,6 +1445,9 @@ with tab3:
                     mime="application/pdf",
                 )
 
+        # ==========================================
+        # DOWNLOAD ALL STUDENTS ATTENDANCE (CUSTOM DATES)
+        # ==========================================
         st.write("---")
         st.subheader(" Download All Students Attendance PDF (Custom Date Range)")
         
@@ -1327,7 +1527,7 @@ with tab4:
             t_subjects = set()
             for row in rows:
                 for sub in row[0].split(","):
-                    clean_sub = "Business Stats" if sub.strip().lower() in ["stats", "business stats"] else sub.strip()
+                    clean_sub = sub.strip()
                     if clean_sub and is_subject_allowed(clean_sub):
                         t_subjects.add(clean_sub)
             test_subject_list = sorted(list(t_subjects))
@@ -1367,11 +1567,9 @@ with tab4:
 
                 enrolled_students = []
                 for roll_no, name, subjects in students:
-                    sub_list = [
-                        "Business Stats" if s.strip().lower() in ["stats", "business stats"] else s.strip()
-                        for s in subjects.split(",")
-                    ]
-                    if test_subject.strip().lower() in [s.lower() for s in sub_list]:
+                    if test_subject.strip().lower() in [
+                        s.strip().lower() for s in subjects.split(",")
+                    ]:
                         enrolled_students.append((roll_no, name))
 
                 if not enrolled_students:
@@ -1537,10 +1735,10 @@ with tab4:
         cursor.close()
         conn.close()
 
+        # Filter test records by teacher's allowed subject(s)
         if allowed_subjects_lower is not None:
             test_records = [
-                r for r in test_records 
-                if r[3] and is_subject_allowed("Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3])
+                r for r in test_records if r[3] and is_subject_allowed(r[3])
             ]
 
         if test_records:
@@ -1549,7 +1747,7 @@ with tab4:
                     "Student Name": r[0],
                     "Roll Number": r[1],
                     "Class": r[2],
-                    "Subject": "Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3],
+                    "Subject": r[3],
                     "Test Title": r[4],
                     "Obtained Marks": r[5],
                     "Total Marks": r[6],
@@ -1567,10 +1765,7 @@ with tab4:
                 name, roll_no, class_name, subject, _, _, _, _ = first_rec
                 current_printing_date = str(date.today())
 
-                all_test_subjects = sorted(list(set([
-                    "Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3]
-                    for r in selected_records if r[3]
-                ])))
+                all_test_subjects = sorted(list(set([r[3] for r in selected_records if r[3]])))
                 subj_label_str = ", ".join(all_test_subjects) if all_test_subjects else subject
 
                 filename = f"AIMS_Report_{roll_no}.pdf"
@@ -1583,15 +1778,75 @@ with tab4:
                     bottomMargin=36,
                 )
                 story = []
+
                 styles = getSampleStyleSheet()
 
-                title_style = ParagraphStyle("TitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=colors.HexColor("#2A2B6E"))
-                subtitle_style = ParagraphStyle("SubtitleStyle", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#444444"))
-                report_title_style = ParagraphStyle("ReportTitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, textColor=colors.white)
-                section_heading = ParagraphStyle("SectionHeading", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=13, textColor=colors.white)
-                cell_style = ParagraphStyle("CellStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=9, leading=12, textColor=colors.HexColor("#111111"))
-                cell_bold = ParagraphStyle("CellBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=colors.HexColor("#111111"))
-                cell_center_bold = ParagraphStyle("CellCenterBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.HexColor("#111111"))
+                title_style = ParagraphStyle(
+                    "TitleStyle",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=15,
+                    leading=18,
+                    alignment=TA_CENTER,
+                    textColor=colors.HexColor("#2A2B6E"),
+                )
+
+                subtitle_style = ParagraphStyle(
+                    "SubtitleStyle",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Oblique",
+                    fontSize=8.5,
+                    leading=11,
+                    alignment=TA_CENTER,
+                    textColor=colors.HexColor("#444444"),
+                )
+
+                report_title_style = ParagraphStyle(
+                    "ReportTitleStyle",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    leading=13,
+                    alignment=TA_CENTER,
+                    textColor=colors.white,
+                )
+
+                section_heading = ParagraphStyle(
+                    "SectionHeading",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=10,
+                    leading=13,
+                    textColor=colors.white,
+                )
+
+                cell_style = ParagraphStyle(
+                    "CellStyle",
+                    parent=styles["Normal"],
+                    fontName="Helvetica",
+                    fontSize=9,
+                    leading=12,
+                    textColor=colors.HexColor("#111111"),
+                )
+
+                cell_bold = ParagraphStyle(
+                    "CellBold",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=9,
+                    leading=12,
+                    textColor=colors.HexColor("#111111"),
+                )
+
+                cell_center_bold = ParagraphStyle(
+                    "CellCenterBold",
+                    parent=styles["Normal"],
+                    fontName="Helvetica-Bold",
+                    fontSize=9,
+                    leading=12,
+                    alignment=TA_CENTER,
+                    textColor=colors.HexColor("#111111"),
+                )
 
                 try:
                     logo_img = Image("monomono.png", width=55, height=55)
@@ -1601,88 +1856,166 @@ with tab4:
                 header_text_content = [
                     Paragraph("<b>AIMS SCIENCE ACADEMY</b>", title_style),
                     Spacer(1, 2),
-                    Paragraph('"Illuminating Minds, Shaping Futures"', subtitle_style),
+                    Paragraph(
+                        '"Illuminating Minds, Shaping Futures"', subtitle_style
+                    ),
                     Spacer(1, 3),
-                    Paragraph("Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email: aimsscienceacademy6@gmail.com", subtitle_style),
+                    Paragraph(
+                        "Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email:"
+                        " aimsscienceacademy6@gmail.com",
+                        subtitle_style,
+                    ),
                     Spacer(1, 2),
-                    Paragraph("Address: Inside Staff Gala, Near TIPS Model School Sargodha Road, Gujrat.", subtitle_style),
+                    Paragraph(
+                        "Address: Inside Staff Gala, Near TIPS Model School"
+                        " Sargodha Road, Gujrat.",
+                        subtitle_style,
+                    ),
                 ]
 
-                header_table = Table([[logo_img, header_text_content]], colWidths=[70, 470])
-                header_table.setStyle(TableStyle([
-                    ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#2A2B6E")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F9F9F9")),
-                ]))
+                header_table = Table(
+                    [[logo_img, header_text_content]], colWidths=[70, 470]
+                )
+                header_table.setStyle(
+                    TableStyle([
+                        (
+                            "BOX",
+                            (0, 0),
+                            (-1, -1),
+                            1.5,
+                            colors.HexColor("#2A2B6E"),
+                        ),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                        (
+                            "BACKGROUND",
+                            (0, 0),
+                            (-1, -1),
+                            colors.HexColor("#F9F9F9"),
+                        ),
+                    ])
+                )
                 story.append(header_table)
                 story.append(Spacer(1, 10))
 
-                report_title = Table([[Paragraph("STUDENT TEST PERFORMANCE REPORT", report_title_style)]], colWidths=[540])
-                report_title.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ]))
+                report_title = Table(
+                    [[Paragraph("STUDENT TEST PERFORMANCE REPORT", report_title_style)]],
+                    colWidths=[540],
+                )
+                report_title.setStyle(
+                    TableStyle([
+                        (
+                            "BACKGROUND",
+                            (0, 0),
+                            (-1, -1),
+                            colors.HexColor("#5A1818"),
+                        ),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ])
+                )
                 story.append(report_title)
                 story.append(Spacer(1, 5))
 
-                principal_p = Paragraph("<b>Principal: Choudhary Asim Walyat</b>", ParagraphStyle("Prin", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER))
+                principal_p = Paragraph(
+                    "<b>Principal: Choudhary Asim Walyat</b>",
+                    ParagraphStyle(
+                        "Prin",
+                        parent=styles["Normal"],
+                        fontName="Helvetica-Bold",
+                        fontSize=10,
+                        alignment=TA_CENTER,
+                    ),
+                )
                 story.append(principal_p)
                 story.append(Spacer(1, 8))
 
                 info_data = [
-                    [Paragraph("<b>Student Name</b>", cell_bold), Paragraph(f": {name}", cell_style), Paragraph("<b>Subject(s)</b>", cell_bold), Paragraph(f": {subj_label_str}", cell_style)],
-                    [Paragraph("<b>Roll No.</b>", cell_bold), Paragraph(f": {roll_no}", cell_style), Paragraph("<b>Date</b>", cell_bold), Paragraph(f": {current_printing_date}", cell_style)],
-                    [Paragraph("<b>Class/Batch</b>", cell_bold), Paragraph(f": {class_name}", cell_style), Paragraph("", cell_style), Paragraph("", cell_style)],
+                    [
+                        Paragraph("<b>Student Name</b>", cell_bold),
+                        Paragraph(f": {name}", cell_style),
+                        Paragraph("<b>Subject(s)</b>", cell_bold),
+                        Paragraph(f": {subj_label_str}", cell_style),
+                    ],
+                    [
+                        Paragraph("<b>Roll No.</b>", cell_bold),
+                        Paragraph(f": {roll_no}", cell_style),
+                        Paragraph("<b>Date</b>", cell_bold),
+                        Paragraph(f": {current_printing_date}", cell_style),
+                    ],
+                    [
+                        Paragraph("<b>Class/Batch</b>", cell_bold),
+                        Paragraph(f": {class_name}", cell_style),
+                        Paragraph("", cell_style),
+                        Paragraph("", cell_style),
+                    ],
                 ]
-                info_table = Table(info_data, colWidths=[90, 180, 90, 180])
-                info_table.setStyle(TableStyle([
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#CCCCCC")),
-                ]))
+                info_table = Table(
+                    info_data, colWidths=[90, 180, 90, 180]
+                )
+                info_table.setStyle(
+                    TableStyle([
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#CCCCCC")),
+                    ])
+                )
                 story.append(info_table)
                 story.append(Spacer(1, 10))
 
-                breakdown_title = Table([[Paragraph("DETAILED MARKS BREAKDOWN", section_heading)]], colWidths=[540])
-                breakdown_title.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ]))
+                breakdown_title = Table(
+                    [[Paragraph("DETAILED MARKS BREAKDOWN", section_heading)]],
+                    colWidths=[540],
+                )
+                breakdown_title.setStyle(
+                    TableStyle([
+                        (
+                            "BACKGROUND",
+                            (0, 0),
+                            (-1, -1),
+                            colors.HexColor("#5A1818"),
+                        ),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ])
+                )
                 story.append(breakdown_title)
 
-                marks_rows = [[
-                    Paragraph("<b>Test Title</b>", section_heading),
-                    Paragraph("<b>Date</b>", section_heading),
-                    Paragraph("<b>Subject</b>", section_heading),
-                    Paragraph("<b>Marks Obtained</b>", section_heading),
-                    Paragraph("<b>Total Marks</b>", section_heading),
-                ]]
+                marks_rows = [
+                    [
+                        Paragraph("<b>Test Title</b>", section_heading),
+                        Paragraph("<b>Date</b>", section_heading),
+                        Paragraph("<b>Subject</b>", section_heading),
+                        Paragraph("<b>Marks Obtained</b>", section_heading),
+                        Paragraph("<b>Total Marks</b>", section_heading),
+                    ]
+                ]
 
                 total_obt_all = 0.0
                 total_tot_all = 0.0
 
                 for r in selected_records:
                     _, _, _, t_sub, t_name, obt, tot, t_date = r
-                    clean_t_sub = "Business Stats" if t_sub.strip().lower() in ["stats", "business stats"] else t_sub
                     total_obt_all += obt
                     total_tot_all += tot
                     
                     marks_rows.append([
                         Paragraph(t_name, cell_style),
                         Paragraph(str(t_date), cell_style),
-                        Paragraph(str(clean_t_sub), cell_style),
+                        Paragraph(str(t_sub), cell_style),
                         Paragraph(str(obt), cell_style),
                         Paragraph(str(tot), cell_style),
                     ])
 
-                overall_pct = (total_obt_all / total_tot_all) * 100 if total_tot_all > 0 else 0.0
+                overall_pct = (
+                    (total_obt_all / total_tot_all) * 100
+                    if total_tot_all > 0
+                    else 0.0
+                )
 
                 if overall_pct >= 80.0:
                     behaviour_text = "Excellent"
@@ -1693,176 +2026,103 @@ with tab4:
 
                 marks_rows.append([
                     Paragraph("<b>Overall Behaviour</b>", cell_bold),
-                    "", "",
+                    "",
+                    "",
                     Paragraph(f"<b>{behaviour_text}</b>", cell_center_bold),
                     "",
                 ])
 
                 marks_table = Table(marks_rows, colWidths=[150, 90, 100, 100, 100])
-                marks_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7A2222")),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("ALIGN", (3, 0), (-1, -1), "CENTER"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ("SPAN", (0, -1), (2, -1)),
-                    ("SPAN", (3, -1), (4, -1)),
-                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#EFEFEF")),
-                ]))
+                marks_table.setStyle(
+                    TableStyle([
+                        (
+                            "BACKGROUND",
+                            (0, 0),
+                            (-1, 0),
+                            colors.HexColor("#7A2222"),
+                        ),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("ALIGN", (3, 0), (-1, -1), "CENTER"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                        ("SPAN", (0, -1), (2, -1)),
+                        ("SPAN", (3, -1), (4, -1)),
+                        (
+                            "BACKGROUND",
+                            (0, -1),
+                            (-1, -1),
+                            colors.HexColor("#EFEFEF"),
+                        ),
+                    ])
+                )
                 story.append(marks_table)
+
                 story.append(Spacer(1, 120))
 
-                remarks_title = Paragraph("<b>TEACHER'S REMARKS</b>", ParagraphStyle("RT", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, textColor=colors.HexColor("#111111")))
-                remarks_text_p = Paragraph('"Excellent progress. Keep focusing on concepts for further improvement."', ParagraphStyle("RText", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=9, textColor=colors.HexColor("#333333")))
-                remarks_table = Table([[remarks_title], [remarks_text_p]], colWidths=[540])
-                remarks_table.setStyle(TableStyle([("TOPPADDING", (0, 0), (-1, -1), 2), ("BOTTOMPADDING", (0, 0), (-1, -1), 2)]))
+                remarks_title = Paragraph(
+                    "<b>TEACHER'S REMARKS</b>",
+                    ParagraphStyle(
+                        "RT",
+                        parent=styles["Normal"],
+                        fontName="Helvetica-Bold",
+                        fontSize=10,
+                        textColor=colors.HexColor("#111111"),
+                    ),
+                )
+                remarks_text = Paragraph(
+                    '"Excellent progress. Keep focusing on concepts for further'
+                    ' improvement."',
+                    ParagraphStyle(
+                        "RText",
+                        parent=styles["Normal"],
+                        fontName="Helvetica-Oblique",
+                        fontSize=9,
+                        textColor=colors.HexColor("#333333"),
+                    ),
+                )
+
+                remarks_table = Table(
+                    [[remarks_title], [remarks_text]], colWidths=[540]
+                )
+                remarks_table.setStyle(
+                    TableStyle([
+                        ("TOPPADDING", (0, 0), (-1, -1), 2),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ])
+                )
                 story.append(remarks_table)
                 story.append(Spacer(1, 20))
 
+                # Signatures Section
                 try:
                     sign_img = Image("asim_sign.png", width=110, height=45)
                 except Exception:
                     sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
 
                 sig_data = [
-                    [Paragraph("____________________________", cell_style), sign_img],
-                    [Paragraph("<b>Parent's Signature</b>", cell_style), Paragraph("<b>Principal / Teacher's Signature</b>", cell_style)],
+                    [
+                        Paragraph("____________________________", cell_style),
+                        sign_img,
+                    ],
+                    [
+                        Paragraph("<b>Parent's Signature</b>", cell_style),
+                        Paragraph(
+                            "<b>Principal / Teacher's Signature</b>", cell_style
+                        ),
+                    ],
                 ]
                 sig_table = Table(sig_data, colWidths=[270, 270])
-                sig_table.setStyle(TableStyle([
-                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                    ("ALIGN", (1, 0), (1, -1), "LEFT"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("LEFTPADDING", (1, 0), (1, -1), 40),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ]))
-                story.append(sig_table)
-
-                doc.build(story)
-                with open(filename, "rb") as f:
-                    return f.read()
-
-            # ==========================================
-            # FUNCTION FOR ALL STUDENTS TEST REPORTS PDF
-            # ==========================================
-            def generate_aims_all_tests_pdf(all_test_records, selected_pdf_subjects):
-                filename = "AIMS_All_Students_Test_Reports.pdf"
-                doc = SimpleDocTemplate(filename, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
-                story = []
-                styles = getSampleStyleSheet()
-
-                title_style = ParagraphStyle("TitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=TA_CENTER, textColor=colors.HexColor("#2A2B6E"))
-                subtitle_style = ParagraphStyle("SubtitleStyle", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#444444"))
-                report_title_style = ParagraphStyle("ReportTitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=13, alignment=TA_CENTER, textColor=colors.white)
-                section_heading = ParagraphStyle("SectionHeading", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=TA_CENTER, textColor=colors.white)
-                cell_style = ParagraphStyle("CellStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=11, textColor=colors.HexColor("#111111"))
-                cell_center = ParagraphStyle("CellCenter", parent=styles["Normal"], fontName="Helvetica", fontSize=8.5, leading=11, alignment=TA_CENTER, textColor=colors.HexColor("#111111"))
-                cell_bold = ParagraphStyle("CellBold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=colors.HexColor("#111111"))
-
-                try:
-                    logo_img = Image("monomono.png", width=55, height=55)
-                except Exception:
-                    logo_img = Paragraph("<b>[LOGO]</b>", cell_bold)
-
-                header_text_content = [
-                    Paragraph("<b>AIMS SCIENCE ACADEMY</b>", title_style),
-                    Spacer(1, 2),
-                    Paragraph('"Illuminating Minds, Shaping Futures"', subtitle_style),
-                    Spacer(1, 3),
-                    Paragraph("Phone: +92-319-8717772 &nbsp;&nbsp;|&nbsp;&nbsp; Email: aimsscienceacademy6@gmail.com", subtitle_style),
-                    Spacer(1, 2),
-                    Paragraph("Address: Inside Staff Gala, Near TIPS Model School Sargodha Road, Gujrat.", subtitle_style),
-                ]
-
-                header_table = Table([[logo_img, header_text_content]], colWidths=[70, 470])
-                header_table.setStyle(TableStyle([
-                    ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#2A2B6E")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F9F9F9")),
-                ]))
-                story.append(header_table)
-                story.append(Spacer(1, 10))
-
-                subj_joined = ", ".join(selected_pdf_subjects) if selected_pdf_subjects else "All Subjects"
-                report_title = Table([[Paragraph(f"ALL STUDENTS TEST REPORTS ({subj_joined})", report_title_style)]], colWidths=[540])
-                report_title.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#5A1818")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ]))
-                story.append(report_title)
-                story.append(Spacer(1, 5))
-
-                principal_p = Paragraph("<b>Principal: Choudhary Asim Walyat</b>", ParagraphStyle("Prin", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, alignment=TA_CENTER))
-                story.append(principal_p)
-                story.append(Spacer(1, 8))
-
-                table_rows = [[
-                    Paragraph("<b>Roll No</b>", section_heading),
-                    Paragraph("<b>Student Name</b>", section_heading),
-                    Paragraph("<b>Class</b>", section_heading),
-                    Paragraph("<b>Subject</b>", section_heading),
-                    Paragraph("<b>Test Title</b>", section_heading),
-                    Paragraph("<b>Obt / Tot</b>", section_heading),
-                    Paragraph("<b>%</b>", section_heading),
-                    Paragraph("<b>Date</b>", section_heading),
-                ]]
-
-                for r in all_test_records:
-                    s_name, s_roll, s_class, s_sub, t_name, obt, tot, t_date = r
-                    clean_sub = "Business Stats" if s_sub.strip().lower() in ["stats", "business stats"] else s_sub.strip()
-                    
-                    if selected_pdf_subjects and clean_sub not in selected_pdf_subjects:
-                        continue
-
-                    pct = (obt / tot * 100) if tot > 0 else 0.0
-
-                    table_rows.append([
-                        Paragraph(str(s_roll), cell_center),
-                        Paragraph(str(s_name), cell_style),
-                        Paragraph(str(s_class), cell_center),
-                        Paragraph(str(clean_sub), cell_center),
-                        Paragraph(str(t_name), cell_style),
-                        Paragraph(f"{obt}/{tot}", cell_center),
-                        Paragraph(f"{pct:.1f}%", cell_center),
-                        Paragraph(str(t_date), cell_center),
+                sig_table.setStyle(
+                    TableStyle([
+                        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                        ("ALIGN", (1, 0), (1, -1), "LEFT"),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("LEFTPADDING", (1, 0), (1, -1), 40),
+                        ("TOPPADDING", (0, 0), (-1, -1), 2),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                     ])
-
-                all_table = Table(table_rows, colWidths=[50, 115, 65, 85, 105, 50, 35, 35])
-                all_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7A2222")),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#999999")),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ]))
-                story.append(all_table)
-                story.append(Spacer(1, 30))
-
-                try:
-                    sign_img = Image("asim_sign.png", width=110, height=45)
-                except Exception:
-                    sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
-
-                sig_data = [
-                    [Paragraph("____________________________", cell_style), sign_img],
-                    [Paragraph("<b>Parent's Signature</b>", cell_style), Paragraph("<b>Principal / Teacher's Signature</b>", cell_style)],
-                ]
-                sig_table = Table(sig_data, colWidths=[270, 270])
-                sig_table.setStyle(TableStyle([
-                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
-                    ("ALIGN", (1, 0), (1, -1), "LEFT"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("LEFTPADDING", (1, 0), (1, -1), 40),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ]))
+                )
                 story.append(sig_table)
 
                 doc.build(story)
@@ -1870,7 +2130,9 @@ with tab4:
                     return f.read()
 
             st.write("---")
-            st.subheader(" Download Student Test Performance Report (Multi-Test Selection)")
+            st.subheader(
+                " Download Student Test Performance Report (Multi-Test Selection)"
+            )
 
             student_dict = {}
             for r in test_records:
@@ -1885,6 +2147,7 @@ with tab4:
             )
 
             if selected_roll:
+                # Fetch student's enrolled subjects from database
                 conn_sub = get_db_connection()
                 cur_sub = conn_sub.cursor()
                 cur_sub.execute("SELECT subjects FROM students WHERE roll_no = %s", (selected_roll,))
@@ -1894,11 +2157,13 @@ with tab4:
 
                 student_enrolled_subjects = []
                 if sub_row and sub_row[0]:
-                    for s in sub_row[0].split(","):
-                        cleaned = "Business Stats" if s.strip().lower() in ["stats", "business stats"] else s.strip()
-                        if cleaned and is_subject_allowed(cleaned):
-                            student_enrolled_subjects.append(cleaned)
+                    student_enrolled_subjects = [
+                        s.strip()
+                        for s in sub_row[0].split(",")
+                        if s.strip() and is_subject_allowed(s.strip())
+                    ]
 
+                # Subject selection box right below roll number selection
                 selected_test_subjects = st.multiselect(
                     "Select Subject(s) for Test Report",
                     options=student_enrolled_subjects,
@@ -1906,12 +2171,11 @@ with tab4:
                     key="test_pdf_subject_multiselect"
                 )
 
-                student_tests = []
-                for r in test_records:
-                    if r[1] == selected_roll:
-                        r_sub_clean = "Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3].strip()
-                        if not selected_test_subjects or r_sub_clean in selected_test_subjects:
-                            student_tests.append(r)
+                # Filter student tests based on selected roll no and selected subjects
+                student_tests = [
+                    r for r in test_records 
+                    if r[1] == selected_roll and (not selected_test_subjects or r[3] in selected_test_subjects)
+                ]
 
                 if not student_tests:
                     st.warning("No test records found for the selected student and subject(s).")
@@ -1925,9 +2189,8 @@ with tab4:
 
                     with st.form("select_tests_form"):
                         for idx, test in enumerate(student_tests):
-                            clean_t_sub = "Business Stats" if test[3].strip().lower() in ["stats", "business stats"] else test[3]
                             test_label = (
-                                f"Subject: **{clean_t_sub}** | Test: **{test[4]}** |"
+                                f"Subject: **{test[3]}** | Test: **{test[4]}** |"
                                 f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
                             )
                             is_checked = st.checkbox(
@@ -1940,9 +2203,14 @@ with tab4:
 
                     if generate_btn:
                         if not selected_tests_indices:
-                            st.warning("Please select at least one test to generate the PDF report!")
+                            st.warning(
+                                "Please select at least one test to generate the"
+                                " PDF report!"
+                            )
                         else:
-                            st.session_state["selected_tests_indices"] = selected_tests_indices
+                            st.session_state["selected_tests_indices"] = (
+                                selected_tests_indices
+                            )
                             st.session_state["selected_roll"] = selected_roll
                             st.success("Report data generated successfully!")
 
@@ -1961,36 +2229,5 @@ with tab4:
                             file_name=f"AIMS_Report_{selected_roll}.pdf",
                             mime="application/pdf",
                         )
-
-            # ==========================================
-            # DOWNLOAD ALL STUDENTS TEST REPORTS (BY SUBJECT)
-            # ==========================================
-            st.write("---")
-            st.subheader(" Download All Students Test Reports (By Subject)")
-
-            all_available_test_subjects = sorted(list(set([
-                "Business Stats" if r[3].strip().lower() in ["stats", "business stats"] else r[3].strip()
-                for r in test_records if r[3]
-            ])))
-
-            selected_all_test_subjects = st.multiselect(
-                "Select Subject(s) for All Students Test PDF Report",
-                options=all_available_test_subjects,
-                default=all_available_test_subjects,
-                key="all_students_test_subjects_multiselect"
-            )
-
-            if test_records:
-                all_tests_pdf_data = generate_aims_all_tests_pdf(
-                    test_records, selected_all_test_subjects
-                )
-                st.download_button(
-                    label=" Download All Students Test Reports PDF",
-                    data=all_tests_pdf_data,
-                    file_name="AIMS_All_Students_Test_Reports.pdf",
-                    mime="application/pdf",
-                )
-            else:
-                st.info("No test records available to generate report.")
         else:
             st.info("No test records found.")
