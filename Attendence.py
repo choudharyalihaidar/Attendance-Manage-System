@@ -167,10 +167,10 @@ if "logged_in" not in st.session_state:
 # Teacher Credentials Dictionary
 TEACHER_CREDENTIALS = {
     "Sir Shumam-ul-Hassan": ("Math", "math4321"),
-    "Sir Jahangir Malik": ("physics_username", "physics_password"),
+    "Sir Jahangir Malik": ("Physics", "physics4321"),
     "Sir Luqman": ("Luqman", "abcd4321"),
-    "Sir Umair Hunjra": ("computer_username", "computer_password"),
-    "Miss Areej": ("areej_username", "areej_password"),
+    "Sir Umair Hunjra": ("Computer", "computer4321"),
+    "Miss Areej": ("Sciences", "areej4321"),
 }
 
 # Teacher Subject Restrictions
