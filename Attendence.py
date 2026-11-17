@@ -164,13 +164,13 @@ if "logged_in" not in st.session_state:
     st.session_state.role = None
     st.session_state.user_display = None
 
-# Teacher Credentials Dictionary (Sir Luqman username & password updated)
+# Teacher Credentials Dictionary (Sir Shumam-ul-Hassan username & password updated)
 TEACHER_CREDENTIALS = {
-    "Sir Shumam-ul-Hassan": ("math_username", "math_password"),
-    "Sir Jahangir Malik": ("physics_username", "physics_password"),
+    "Sir Shumam-ul-Hassan": ("Math", "math4321"),
+    "Sir Jahangir Malik": ("Physics", "physics4321"),
     "Sir Luqman": ("Luqman", "abcd4321"),
-    "Sir Umair Hunjra": ("computer_username", "computer_password"),
-    "Miss Areej": ("areej_username", "areej_password"),
+    "Sir Umair Hunjra": ("Computer", "computer4321"),
+    "Miss Areej": ("Areej", "areej4321"),
 }
 
 # Teacher Subject Restrictions
@@ -323,16 +323,16 @@ st.title(" AIMS Science Academy - Management System")
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "👥 Manage Students",
-            "📝 Mark Attendance",
-            "📊 Attendance Reports",
-            "📈 Test Reports",
+            " Manage Students",
+            " Mark Attendance",
+            " Attendance Reports",
+            " Test Reports",
         ]
     )
 else:
     tab1 = None
     tab2, tab3, tab4 = st.tabs(
-        ["👥 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+        [" Mark Attendance", " Attendance Reports", " Test Reports"]
     )
 
 # ==========================================
