@@ -762,10 +762,13 @@ with tab3:
             all_dates_set = set()
             for r in selected_records:
                 _, _, _, sub_name, d_str, status_val = r
+                # Normalize subject names for backward compatibility (e.g., 'Stats' and 'Business Stats')
+                clean_sub_name = "Business Stats" if sub_name.strip().lower() in ["stats", "business stats"] else sub_name.strip()
+                
                 all_dates_set.add(d_str)
                 if d_str not in date_map:
                     date_map[d_str] = {}
-                date_map[d_str][sub_name] = status_val
+                date_map[d_str][clean_sub_name] = status_val
 
             sorted_dates = sorted(list(all_dates_set), reverse=False)
 
@@ -784,7 +787,14 @@ with tab3:
                 present_count = 0
                 subject_statuses = []
                 for sub in selected_pdf_subjects:
-                    status = date_map.get(d_str, {}).get(sub, "-")
+                    # Check both exact name and normalized version for matching
+                    sub_clean = sub.strip()
+                    status = date_map.get(d_str, {}).get(sub_clean, "-")
+                    if status == "-" and sub_clean.lower() in ["stats", "business stats"]:
+                        status = date_map.get(d_str, {}).get("Stats", "-")
+                        if status == "-":
+                            status = date_map.get(d_str, {}).get("Business Stats", "-")
+
                     if status.lower() == "present":
                         present_count += 1
                         subject_statuses.append("P")
@@ -1251,19 +1261,17 @@ with tab3:
                 Paragraph("<b>%</b>", section_heading),
             ]]
 
-            # Filter records by date range
             filtered = []
             for r in all_records:
-                # r = (name, roll_no, class_name, subject, date, status)
                 d_val = r[4]
                 if start_d <= d_val <= end_d:
                     filtered.append(r)
 
-            # Aggregate stats per student & subject
             stats_map = {}
             for r in filtered:
                 s_name, s_roll, s_class, s_sub, _, status_val = r
-                key = (s_roll, s_name, s_class, s_sub)
+                clean_sub = "Business Stats" if s_sub.strip().lower() in ["stats", "business stats"] else s_sub.strip()
+                key = (s_roll, s_name, s_class, clean_sub)
                 if key not in stats_map:
                     stats_map[key] = {"present": 0, "absent": 0}
                 if status_val.lower() == "present":
@@ -1300,7 +1308,6 @@ with tab3:
             story.append(all_table)
             story.append(Spacer(1, 30))
 
-            # Signatures
             try:
                 sign_img = Image("asim_sign.png", width=110, height=45)
             except Exception:
@@ -1342,7 +1349,8 @@ with tab3:
             if s_roll not in student_subjects_dict:
                 student_subjects_dict[s_roll] = set()
             if s_sub:
-                student_subjects_dict[s_roll].add(s_sub)
+                clean_sub = "Business Stats" if s_sub.strip().lower() in ["stats", "business stats"] else s_sub.strip()
+                student_subjects_dict[s_roll].add(clean_sub)
 
         col_att_sel1, col_att_sel2 = st.columns(2)
         with col_att_sel1:
@@ -1365,7 +1373,6 @@ with tab3:
                 key="att_days_range",
             )
 
-        # Custom date pickers if "Custom Date Range" is selected
         custom_start_date = None
         custom_end_date = None
         if days_option == "Custom Date Range":
@@ -1386,15 +1393,15 @@ with tab3:
                 key="att_pdf_subjects",
             )
 
-            student_att_records = [
-                r
-                for r in records
-                if r[1] == selected_att_roll
-                and (
-                    not selected_pdf_subjects
-                    or r[3] in selected_pdf_subjects
-                )
-            ]
+            student_att_records = []
+            for r in records:
+                if r[1] == selected_att_roll:
+                    s_sub = r[3]
+                    clean_sub = "Business Stats" if s_sub and s_sub.strip().lower() in ["stats", "business stats"] else s_sub
+                    if not selected_pdf_subjects or clean_sub in selected_pdf_subjects:
+                        # Normalize record subject name for unified rendering
+                        r_modified = (r[0], r[1], r[2], clean_sub, r[4], r[5])
+                        student_att_records.append(r_modified)
 
             if days_option == "Last 7 Days":
                 cutoff_date = date.today() - timedelta(days=7)
