@@ -170,7 +170,7 @@ TEACHER_CREDENTIALS = {
     "Sir Jahangir Malik": ("Physics", "physics4321"),
     "Sir Luqman": ("Luqman", "abcd4321"),
     "Sir Umair Hunjra": ("Computer", "computer4321"),
-    "Miss Areej": ("Areej", "areej4321"),
+    "Miss Areej": ("Sciences", "areej4321"),
 }
 
 # Teacher Subject Restrictions
