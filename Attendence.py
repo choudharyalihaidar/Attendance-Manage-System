@@ -193,7 +193,7 @@ if not st.session_state.logged_in:
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 20px 0;"></div>
+                <div style="font-size: 50px; margin: 20px 0;">🎓</div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
@@ -321,16 +321,16 @@ st.title(" AIMS Science Academy - Management System")
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            " Manage Students",
-            " Mark Attendance",
-            " Attendance Reports",
-            " Test Reports",
+            "👥 Manage Students",
+            "📝 Mark Attendance",
+            "📊 Attendance Reports",
+            "📈 Test Reports",
         ]
     )
 else:
     tab1 = None
     tab2, tab3, tab4 = st.tabs(
-        [" Mark Attendance", " Attendance Reports", " Test Reports"]
+        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
     )
 
 # ==========================================
