@@ -13,7 +13,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 # ==========================================
 # NEON POSTGRESQL CONNECTION CONFIGURATION
 # ==========================================
-DATABASE_URL = "postgresql://neondb_owner:npg_UGwX3Z0ygdho@ep-cold-sound-beiwqd0u-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL = st.secrets["database"]["DATABASE_URL"]
 
 
 def get_db_connection():
@@ -177,7 +177,8 @@ TEACHER_CREDENTIALS = {
 TEACHER_SUBJECT_FILTER = {
     "Sir Shumam-ul-Hassan": ["Math", "Stats"],
     "Sir Jahangir Malik": ["Physics"],
-    "Sir Umair Hunjra": ["Computer"],
+    "Sir Luqman": ["Accounting", "Civics", "Economics", "Education", "Geo", "Psychology"],
+    "Sir Umair Hunjra": ["CN", "Computer", "ICT", "MS Word", "Operating System", "Programming", "Business Stats"],
     "Miss Areej": ["Biology", "Chemistry"],
 }
 
@@ -331,7 +332,7 @@ if st.session_state.role == "admin":
 else:
     tab1 = None
     tab2, tab3, tab4 = st.tabs(
-        ["👥 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
     )
 
 # ==========================================
