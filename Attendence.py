@@ -164,13 +164,13 @@ if "logged_in" not in st.session_state:
     st.session_state.role = None
     st.session_state.user_display = None
 
-# Teacher Credentials Dictionary
+# Teacher Credentials Dictionary (Sir Luqman username & password updated)
 TEACHER_CREDENTIALS = {
-    "Sir Shumam-ul-Hassan": ("Math", "math4321"),
-    "Sir Jahangir Malik": ("Physics", "physics4321"),
-    "Sir Luqman": ("Arts", "arts4321"),
-    "Sir Umair Hunjra": ("Computer", "computer4321"),
-    "Miss Areej": ("Sciences", "areej4321"),
+    "Sir Shumam-ul-Hassan": ("math_username", "math_password"),
+    "Sir Jahangir Malik": ("physics_username", "physics_password"),
+    "Sir Luqman": ("Luqman", "abcd4321"),
+    "Sir Umair Hunjra": ("computer_username", "computer_password"),
+    "Miss Areej": ("areej_username", "areej_password"),
 }
 
 # Teacher Subject Restrictions
@@ -193,7 +193,7 @@ if not st.session_state.logged_in:
             """
             <div class="side-panel-left">
                 <h3 style="color: #ffffff; margin-bottom: 20px;">AIMS SCIENCE ACADEMY</h3>
-                <div style="font-size: 50px; margin: 20px 0;">🎓</div>
+                <div style="font-size: 50px; margin: 20px 0;"></div>
                 <p style="font-size: 16px; color: #d1d5db; font-style: italic;">
                     "ILLUMINATING MINDS, SHAPING FUTURES."
                 </p>
@@ -241,7 +241,7 @@ if not st.session_state.logged_in:
                 if login_role == "Admin":
                     if (
                         username_input == "admin"
-                        and password_input == "19072009"
+                        and password_input == "aimsbyasim"
                     ):
                         st.session_state.logged_in = True
                         st.session_state.role = "admin"
@@ -332,7 +332,7 @@ if st.session_state.role == "admin":
 else:
     tab1 = None
     tab2, tab3, tab4 = st.tabs(
-        ["📝 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
+        ["👥 Mark Attendance", "📊 Attendance Reports", "📈 Test Reports"]
     )
 
 # ==========================================
@@ -1127,7 +1127,7 @@ with tab3:
 
             # 5. Signatures Section
             try:
-                sign_img = Image("azim_sign.png", width=110, height=45)
+                sign_img = Image("asim_sign.png", width=110, height=45)
             except Exception:
                 sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
 
@@ -1875,7 +1875,7 @@ with tab4:
 
                 # Signatures Section
                 try:
-                    sign_img = Image("azim_sign.png", width=110, height=45)
+                    sign_img = Image("asim_sign.png", width=110, height=45)
                 except Exception:
                     sign_img = Paragraph("<b>Choudhary Asim Walyat</b>", cell_style)
 
