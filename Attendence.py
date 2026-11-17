@@ -295,7 +295,6 @@ role_display = (
     else (st.session_state.role.upper() if st.session_state.role else "")
 )
 
-# Determine allowed subjects for the currently logged-in user (None = all subjects allowed)
 allowed_subjects = TEACHER_SUBJECT_FILTER.get(
     st.session_state.get("user_display"), None
 )
@@ -319,7 +318,6 @@ if st.sidebar.button("Logout"):
 
 st.title(" AIMS Science Academy - Management System")
 
-# Role-based Navigation Tabs (Admin gets 4 tabs, Teachers get 3 tabs)
 if st.session_state.role == "admin":
     tab1, tab2, tab3, tab4 = st.tabs(
         [
@@ -2072,7 +2070,6 @@ with tab4:
 
             filtered_tests = []
             for r in all_test_records:
-                # r = (name, roll_no, class_name, subject, test_name, obtained_marks, total_marks, date)
                 d_val = r[7]
                 if start_d <= d_val <= end_d:
                     filtered_tests.append(r)
@@ -2127,127 +2124,127 @@ with tab4:
             with open(filename, "rb") as f:
                 return f.read()
 
-            st.write("---")
-            st.subheader(
-                " Download Student Test Performance Report (Multi-Test Selection)"
-            )
+        st.write("---")
+        st.subheader(
+            " Download Student Test Performance Report (Multi-Test Selection)"
+        )
 
-            student_dict = {}
-            for r in test_records:
-                s_name, s_roll = r[0], r[1]
-                student_dict[s_roll] = s_name
+        student_dict = {}
+        for r in test_records:
+            s_name, s_roll = r[0], r[1]
+            student_dict[s_roll] = s_name
 
-            selected_roll = st.selectbox(
-                "Select Student Roll Number",
-                options=list(student_dict.keys()),
-                format_func=lambda roll: f"{student_dict[roll]} (Roll: {roll})",
-                key="test_pdf_roll_select",
-            )
+        selected_roll = st.selectbox(
+            "Select Student Roll Number",
+            options=list(student_dict.keys()),
+            format_func=lambda roll: f"{student_dict[roll]} (Roll: {roll})",
+            key="test_pdf_roll_select",
+        )
 
-            if selected_roll:
-                conn_sub = get_db_connection()
-                cur_sub = conn_sub.cursor()
-                cur_sub.execute("SELECT subjects FROM students WHERE roll_no = %s", (selected_roll,))
-                sub_row = cur_sub.fetchone()
-                cur_sub.close()
-                conn_sub.close()
+        if selected_roll:
+            conn_sub = get_db_connection()
+            cur_sub = conn_sub.cursor()
+            cur_sub.execute("SELECT subjects FROM students WHERE roll_no = %s", (selected_roll,))
+            sub_row = cur_sub.fetchone()
+            cur_sub.close()
+            conn_sub.close()
 
-                student_enrolled_subjects = []
-                if sub_row and sub_row[0]:
-                    student_enrolled_subjects = [
-                        s.strip()
-                        for s in sub_row[0].split(",")
-                        if s.strip() and is_subject_allowed(s.strip())
-                    ]
-
-                selected_test_subjects = st.multiselect(
-                    "Select Subject(s) for Test Report",
-                    options=student_enrolled_subjects,
-                    default=student_enrolled_subjects,
-                    key="test_pdf_subject_multiselect"
-                )
-
-                student_tests = [
-                    r for r in test_records 
-                    if r[1] == selected_roll and (not selected_test_subjects or r[3] in selected_test_subjects)
+            student_enrolled_subjects = []
+            if sub_row and sub_row[0]:
+                student_enrolled_subjects = [
+                    s.strip()
+                    for s in sub_row[0].split(",")
+                    if s.strip() and is_subject_allowed(s.strip())
                 ]
 
-                if not student_tests:
-                    st.warning("No test records found for the selected student and subject(s).")
-                else:
-                    st.info(
-                        f"This student has a total of **{len(student_tests)}**"
-                        " test(s) matching your selection. Which tests would you like to include in the PDF file?"
+            selected_test_subjects = st.multiselect(
+                "Select Subject(s) for Test Report",
+                options=student_enrolled_subjects,
+                default=student_enrolled_subjects,
+                key="test_pdf_subject_multiselect"
+            )
+
+            student_tests = [
+                r for r in test_records 
+                if r[1] == selected_roll and (not selected_test_subjects or r[3] in selected_test_subjects)
+            ]
+
+            if not student_tests:
+                st.warning("No test records found for the selected student and subject(s).")
+            else:
+                st.info(
+                    f"This student has a total of **{len(student_tests)}**"
+                    " test(s) matching your selection. Which tests would you like to include in the PDF file?"
+                )
+
+                selected_tests_indices = []
+
+                with st.form("select_tests_form"):
+                    for idx, test in enumerate(student_tests):
+                        test_label = (
+                            f"Subject: **{test[3]}** | Test: **{test[4]}** |"
+                            f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
+                        )
+                        is_checked = st.checkbox(
+                            test_label, value=True, key=f"test_chk_{idx}"
+                        )
+                        if is_checked:
+                            selected_tests_indices.append(idx)
+
+                    generate_btn = st.form_submit_button("Generate Report Data")
+
+                if generate_btn:
+                    if not selected_tests_indices:
+                        st.warning(
+                            "Please select at least one test to generate the"
+                            " PDF report!"
+                        )
+                    else:
+                        st.session_state["selected_tests_indices"] = (
+                            selected_tests_indices
+                        )
+                        st.session_state["selected_roll"] = selected_roll
+                        st.success("Report data generated successfully!")
+
+                if (
+                    "selected_tests_indices" in st.session_state
+                    and st.session_state.get("selected_roll") == selected_roll
+                ):
+                    chosen_records = [
+                        student_tests[i]
+                        for i in st.session_state["selected_tests_indices"]
+                    ]
+                    pdf_data = generate_aims_report_pdf(chosen_records)
+                    st.download_button(
+                        label=" Click here to download PDF",
+                        data=pdf_data,
+                        file_name=f"AIMS_Report_{selected_roll}.pdf",
+                        mime="application/pdf",
                     )
 
-                    selected_tests_indices = []
+        # ==========================================
+        # DOWNLOAD ALL STUDENTS TEST REPORTS (CUSTOM DATES)
+        # ==========================================
+        st.write("---")
+        st.subheader(" Download All Students Test Reports PDF (Custom Date Range)")
+        
+        col_all_test1, col_all_test2 = st.columns(2)
+        with col_all_test1:
+            all_test_start_date = st.date_input("All Tests Start Date", value=date.today() - timedelta(days=30), key="all_test_start_date")
+        with col_all_test2:
+            all_test_end_date = st.date_input("All Tests End Date", value=date.today(), key="all_test_end_date")
 
-                    with st.form("select_tests_form"):
-                        for idx, test in enumerate(student_tests):
-                            test_label = (
-                                f"Subject: **{test[3]}** | Test: **{test[4]}** |"
-                                f" Marks: {test[5]}/{test[6]} | Date: {test[7]}"
-                            )
-                            is_checked = st.checkbox(
-                                test_label, value=True, key=f"test_chk_{idx}"
-                            )
-                            if is_checked:
-                                selected_tests_indices.append(idx)
-
-                        generate_btn = st.form_submit_button("Generate Report Data")
-
-                    if generate_btn:
-                        if not selected_tests_indices:
-                            st.warning(
-                                "Please select at least one test to generate the"
-                                " PDF report!"
-                            )
-                        else:
-                            st.session_state["selected_tests_indices"] = (
-                                selected_tests_indices
-                            )
-                            st.session_state["selected_roll"] = selected_roll
-                            st.success("Report data generated successfully!")
-
-                    if (
-                        "selected_tests_indices" in st.session_state
-                        and st.session_state.get("selected_roll") == selected_roll
-                    ):
-                        chosen_records = [
-                            student_tests[i]
-                            for i in st.session_state["selected_tests_indices"]
-                        ]
-                        pdf_data = generate_aims_report_pdf(chosen_records)
-                        st.download_button(
-                            label=" Click here to download PDF",
-                            data=pdf_data,
-                            file_name=f"AIMS_Report_{selected_roll}.pdf",
-                            mime="application/pdf",
-                        )
-
-            # ==========================================
-            # DOWNLOAD ALL STUDENTS TEST REPORTS (CUSTOM DATES)
-            # ==========================================
-            st.write("---")
-            st.subheader(" Download All Students Test Reports PDF (Custom Date Range)")
-            
-            col_all_test1, col_all_test2 = st.columns(2)
-            with col_all_test1:
-                all_test_start_date = st.date_input("All Tests Start Date", value=date.today() - timedelta(days=30), key="all_test_start_date")
-            with col_all_test2:
-                all_test_end_date = st.date_input("All Tests End Date", value=date.today(), key="all_test_end_date")
-
-            if test_records:
-                all_tests_pdf_data = generate_aims_all_tests_pdf(
-                    test_records, str(all_test_start_date), str(all_test_end_date)
-                )
-                st.download_button(
-                    label=" Download All Students Test Reports PDF",
-                    data=all_tests_pdf_data,
-                    file_name=f"AIMS_All_Students_Test_Reports_{all_test_start_date}_to_{all_test_end_date}.pdf",
-                    mime="application/pdf",
-                )
-            else:
-                st.info("No test records available to generate All Students Test Reports.")
+        if test_records:
+            all_tests_pdf_data = generate_aims_all_tests_pdf(
+                test_records, str(all_test_start_date), str(all_test_end_date)
+            )
+            st.download_button(
+                label=" Download All Students Test Reports PDF",
+                data=all_tests_pdf_data,
+                file_name=f"AIMS_All_Students_Test_Reports_{all_test_start_date}_to_{all_test_end_date}.pdf",
+                mime="application/pdf",
+            )
         else:
-            st.info("No test records found.")
+            st.info("No test records available to generate All Students Test Reports.")
+    else:
+        st.info("No test records found.")
